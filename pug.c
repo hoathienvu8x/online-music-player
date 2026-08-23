@@ -115,7 +115,6 @@ struct pug_ast_t* pug_last_text_node(struct pug_ast_t *parent) {
   return NULL;
 }
 
-
 static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast) {
   struct pug_ast_t *root;
   struct pug_ast_t *stack[PUG_MAX_STACK_DEPTH];
@@ -529,6 +528,171 @@ static void pug_ast_print(struct pug_ast_t *node, int depth) {
 
   pug_ast_print(node->head, depth + 1);
   pug_ast_print(node->next, depth);
+}
+
+static const char *pug_skip_whitespace(const char *p, const char *end) {
+  while (p < end && isspace((unsigned char)*p)) p++;
+  return p;
+}
+
+static const char *pug_find_json_value_end(const char *p, const char *end) {
+  p = pug_skip_whitespace(p, end);
+  if (p >= end) return end;
+
+  if (*p == '{' || *p == '[') {
+    char open = *p;
+    char close = (open == '{') ? '}' : ']';
+    int depth = 0, in_string = 0;
+    while (p < end) {
+      if (in_string) {
+        if (*p == '"' && *(p - 1) != '\\') in_string = 0;
+      } else {
+        if (*p == '"') in_string = 1;
+        else if (*p == open) depth++;
+        else if (*p == close) {
+          depth--;
+          if (depth == 0) { p++; break; }
+        }
+      }
+      p++;
+    }
+    return p;
+  } else {
+    int in_string = (*p == '"');
+    if (in_string) p++;
+    while (p < end) {
+      if (in_string) {
+        if (*p == '"' && *(p - 1) != '\\') { p++; break; }
+      } else {
+        if (
+          *p == ',' || *p == '}' || *p == ']' ||
+          *p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'
+        ) {
+          break;
+        }
+      }
+      p++;
+    }
+    return p;
+  }
+}
+
+static const char *pug_json_find_in_object(
+  const char *p, const char *end, const char *key_buf, size_t key_len
+) {
+  p = pug_skip_whitespace(p, end);
+  if (p >= end || *p != '{') return NULL;
+  p++;
+
+  while (p < end) {
+    p = pug_skip_whitespace(p, end);
+    if (p >= end || *p == '}') return NULL;
+    if (*p != '"') return NULL;
+    p++;
+
+    const char *k_start = p;
+    while (p < end && *p != '"') p++;
+    if (p >= end) return NULL;
+    size_t cur_len = (size_t)(p - k_start);
+    p++;
+
+    p = pug_skip_whitespace(p, end);
+    if (p >= end || *p != ':') return NULL;
+    p++;
+
+    p = pug_skip_whitespace(p, end);
+    const char *v_start = p;
+    const char *v_end = pug_find_json_value_end(v_start, end);
+
+    if (cur_len == key_len && memcmp(k_start, key_buf, key_len) == 0) {
+      return v_start;
+    }
+
+    p = pug_skip_whitespace(v_end, end);
+    if (p < end && *p == ',') p++;
+  }
+  return NULL;
+}
+
+static const char *pug_json_find_in_array(
+  const char *p, const char *end, int target_index
+) {
+  p = pug_skip_whitespace(p, end);
+  if (p >= end || *p != '[') return NULL;
+  p++;
+
+  int current_index = 0;
+  while (p < end) {
+    p = pug_skip_whitespace(p, end);
+    if (p >= end || *p == ']') return NULL;
+
+    const char *v_start = p;
+    const char *v_end = pug_find_json_value_end(v_start, end);
+
+    if (current_index == target_index) return v_start;
+
+    current_index++;
+    p = pug_skip_whitespace(v_end, end);
+    if (p < end && *p == ',') p++;
+  }
+  return NULL;
+}
+
+static struct pug_str_t pug_json_get_tok(struct pug_str_t json, struct pug_str_t path) {
+  struct pug_str_t result = pug_str_n(NULL, 0);
+  if (!json.buf || json.len == 0 || !path.buf || path.len == 0) return result;
+
+  const char *p = json.buf;
+  const char *end = json.buf + json.len;
+  
+  const char *path_p = path.buf;
+  const char *path_end = path.buf + path.len;
+
+  while (path_p < path_end) {
+    path_p = pug_skip_whitespace(path_p, path_end);
+    if (path_p >= path_end) break;
+
+    if (*path_p == '[') {
+      path_p++;
+      int index = 0;
+      while (path_p < path_end && *path_p >= '0' && *path_p <= '9') {
+        index = index * 10 + (*path_p - '0');
+        path_p++;
+      }
+      if (path_p < path_end && *path_p == ']') path_p++;
+      p = pug_json_find_in_array(p, end, index);
+      if (!p) return result;
+    } else {
+      const char *key_start = path_p;
+      while (path_p < path_end && *path_p != '.' && *path_p != '[') {
+        path_p++;
+      }
+      size_t key_len = (size_t)(path_p - key_start);
+      if (key_len == 0) return result;
+
+      p = pug_json_find_in_object(p, end, key_start, key_len);
+      if (!p) return result;
+    }
+
+    if (path_p < path_end && *path_p == '.') {
+      path_p++;
+    }
+  }
+
+  const char *tok_start = pug_skip_whitespace(p, end);
+  const char *tok_end = pug_find_json_value_end(tok_start, end);
+
+  while (tok_end > tok_start && isspace((unsigned char)*(tok_end - 1))) {
+    tok_end--;
+  }
+
+  if (tok_end - tok_start >= 2 && *tok_start == '"' && *(tok_end - 1) == '"') {
+    tok_start++;
+    tok_end--;
+  }
+
+  result = pug_str_n(tok_start, (size_t)(tok_end - tok_start));
+  return result;
 }
 
 int lte_pug_render(
