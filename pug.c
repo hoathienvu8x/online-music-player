@@ -25,6 +25,11 @@ struct pug_ast_t {
   struct pug_ast_t *parent, *head, *next;
 };
 
+static const char* self_closing_tags[] = {
+  "area", "br", "col", "hr", "img",
+  "input", "link", "meta", "doctype", NULL
+};
+
 static struct pug_ast_t *pug_ast_create(enum pug_node_t type, int indent) {
   struct pug_ast_t *ast = (struct pug_ast_t *)calloc(
     1, sizeof(struct pug_ast_t)
@@ -446,7 +451,7 @@ static int read_file(const char *fpath, char **content, size_t *len) {
   if (len) *len = (size_t)size;
   return 0;
 }
-
+#ifdef TEST_PUG
 static int pug_str_print(struct pug_str_t s) {
   size_t written = fwrite(s.buf, 1, s.len, stdout);
   if (written != s.len) {
@@ -529,7 +534,7 @@ static void pug_ast_print(struct pug_ast_t *node, int depth) {
   pug_ast_print(node->head, depth + 1);
   pug_ast_print(node->next, depth);
 }
-
+#endif
 static const char *pug_skip_whitespace(const char *p, const char *end) {
   while (p < end && isspace((unsigned char)*p)) p++;
   return p;
@@ -695,17 +700,452 @@ static struct pug_str_t pug_json_get_tok(struct pug_str_t json, struct pug_str_t
   return result;
 }
 
+static int is_self_closing(const struct pug_str_t tag) {
+  int i;
+  if (tag.buf == NULL || tag.len == 0) return 0;
+  for (i = 0; self_closing_tags[i] != NULL; i++) {
+    if (pug_str_equals(tag, pug_str_s(self_closing_tags[i]))) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static int pug_str_resize(struct pug_str_t *s, size_t len) {
+  if (s->len + len >= s->capacity) {
+    size_t capacity = s->capacity + len + 1;
+    char *buf = (char *)calloc(1, capacity * sizeof(char));
+    if (!buf) return -1;
+    if (s->buf) {
+      memcpy(buf, s->buf, s->len);
+      free(s->buf);
+    }
+    buf[s->len] = '\0';
+    s->buf = buf, s->capacity = capacity;
+  }
+  return 0;
+}
+
+static int pug_str_push(struct pug_str_t *s, const char *p, size_t len) {
+  if (len > 0) {
+    if (!p) return -1;
+    if (pug_str_resize(s, len) == -1) return -1;
+    memcpy(s->buf + s->len, p, len);
+    s->len += len, s->buf[s->len] = '\0';
+  }
+  return 0;
+}
+
+static int pug_str_put(struct pug_str_t *s, char c) {
+  if (pug_str_resize(s, 1) == -1) return -1;
+  s->buf[s->len++] = c;
+  return 0;
+}
+
+static int pug_str_append(struct pug_str_t *s, const char *p) {
+  return pug_str_push(s, p, p ? strlen(p) : 0);
+}
+
+static int is_inside_pre(struct pug_ast_t *node) {
+  struct pug_ast_t *curr = node ? node->parent : NULL;
+  while (curr != NULL) {
+    if (curr->type == pug_node_code_block && pug_str_equals(curr->tag, pug_str_s("pre"))) {
+      return 1;
+    }
+    if (curr->type == pug_node_root) {
+      break;
+    }
+    curr = curr->parent;
+  }
+  return 0;
+}
+
+static int pug_interpolate_variables(
+  struct pug_str_t s, struct pug_str_t *ctx_json, struct pug_str_t item,
+  struct pug_str_t loop_var, struct pug_str_t *out
+) {
+  const char *cursor = s.buf;
+  const char *end = s.buf + s.len;
+  
+  while (cursor < end) {
+    if (cursor + 1 < end && *cursor == '#' && *(cursor + 1) == '{') {
+      const char *start = cursor + 2;
+      const char *brace = start;
+      
+      while (brace < end && *brace != '}') {
+        brace++;
+      }
+      
+      if (brace < end) {
+        struct pug_str_t var_name = pug_str_n(start, (size_t)(brace - start));
+        struct pug_str_t val = pug_str_n(NULL, 0);
+        
+        if (item.buf && item.len > 0) {
+          if (loop_var.len > 0 && pug_str_equals(var_name, loop_var)) {
+            val = item;
+          } else {
+            if (loop_var.len > 0 && var_name.len > loop_var.len &&
+                memcmp(var_name.buf, loop_var.buf, loop_var.len) == 0 &&
+                var_name.buf[loop_var.len] == '.') {
+              struct pug_str_t sub_path = pug_str_n(var_name.buf + loop_var.len + 1, var_name.len - loop_var.len - 1);
+              val = pug_json_get_tok(item, sub_path);
+            } else {
+              val = pug_json_get_tok(item, var_name);
+            }
+          }
+        }
+        
+        if (!val.buf || val.len == 0) {
+          val = pug_json_get_tok(*ctx_json, var_name);
+        }
+
+        if (val.buf && val.len > 0) {
+          if (pug_str_push(out, val.buf, val.len) == -1) {
+            return -1;
+          }
+        }
+        
+        cursor = brace + 1;
+        continue;
+      }
+    }
+    
+    if (pug_str_put(out, *cursor) == -1) {
+      return -1;
+    }
+    cursor++;
+  }
+  return 0;
+}
+
+static int pug_ast_node_render(
+  struct pug_ast_t *node, struct pug_str_t *ctx_json,
+  struct pug_str_t item, struct pug_str_t loop_var,
+  int indent_level, struct pug_str_t *indent_str,
+  struct pug_str_t *out
+) {
+  if (!node) return -1;
+  
+  if (node->type == pug_node_root) {
+    struct pug_ast_t *child = node->head;
+    while (child != NULL) {
+      if (pug_ast_node_render(
+        child, ctx_json, item, loop_var, indent_level, indent_str, out
+      ) == -1) {
+        goto fail;
+      }
+      child = child->next;
+    }
+    return 0;
+  }
+  int target_len = indent_level * 2;
+  if (target_len < 0) target_len = 0;
+
+  if ((size_t)target_len > indent_str->len) {
+    int diff = target_len - (int)indent_str->len;
+    for (int i = 0; i < diff; i += 2) {
+      if (pug_str_append(indent_str, "  ") == -1) {
+        goto fail;
+      }
+    }
+  } else {
+    indent_str->len = (size_t)target_len;
+    if (indent_str->buf && indent_str->capacity > indent_str->len) {
+      indent_str->buf[indent_str->len] = '\0';
+    }
+  }
+
+  if (node->type == pug_node_doctype) {
+    if (pug_str_append(out, "<!DOCTYPE ") == -1) goto fail;
+    if (node->attrs.len > 0) {
+      if (pug_interpolate_variables(
+        node->attrs, ctx_json, item, loop_var, out) == -1
+      ) {
+        goto fail;
+      }
+    } else {
+      if (pug_str_append(out, "html") == -1) {
+        goto fail;
+      }
+    }
+    if (pug_str_append(out, ">\n") == -1) {
+      goto fail;
+    }
+  }  
+  else if (node->type == pug_node_tag) {
+    int is_id_shortcut = (node->selector.len > 0 && node->selector.buf[0] == '#');
+    
+    if (pug_str_push(out, indent_str->buf, indent_str->len) == -1) {
+      goto fail;
+    }
+    if (pug_str_put(out, '<') == -1) {
+      goto fail;
+    }
+
+    if (is_id_shortcut) {
+      struct pug_str_t tag_name = node->tag.len > 0 ? node->tag : pug_str_n("div", 3);
+      if (pug_str_push(out, tag_name.buf, tag_name.len) == -1) {
+        goto fail;
+      }
+      if (pug_str_append(out, " id=\"") == -1) {
+        goto fail;
+      }
+
+      const char *id_start = node->selector.buf + 1;
+      size_t id_len = 0;
+      while (id_len < node->selector.len - 1 && id_start[id_len] != '.') id_len++;
+      if (pug_str_push(out, id_start, id_len) == -1) {
+        goto fail;
+      }
+      if (pug_str_put(out, '"') == -1) {
+        goto fail;
+      }
+      
+      if (id_len < node->selector.len - 1) {
+        if (pug_str_append(out, " class=\"") == -1) {
+          goto fail;
+        }
+        const char *class_start = id_start + id_len + 1;
+        size_t class_len = (node->selector.buf + node->selector.len) - class_start;
+        for (size_t k = 0; k < class_len; k++) {
+          char c = (class_start[k] == '.') ? ' ' : class_start[k];
+          if (pug_str_put(out, c) == -1) {
+            goto fail;
+          }
+        }
+        if (pug_str_put(out, '"') == -1) {
+          goto fail;
+        }
+      }
+    } else {
+      struct pug_str_t tag_name = node->tag.len > 0 ? node->tag : pug_str_n("div", 3);
+      if (pug_str_push(out, tag_name.buf, tag_name.len) == -1) {
+        goto fail;
+      }
+      
+      if (node->selector.len > 0) {
+        const char *ptr = node->selector.buf;
+        const char *end = node->selector.buf + node->selector.len;
+        const char *dot = memchr(ptr, '.', node->selector.len);
+        if (dot) {
+          if (pug_str_append(out, " class=\"") == -1) {
+            goto fail;
+          }
+          for (const char *p = dot + 1; p < end; p++) {
+            char c = (*p == '.') ? ' ' : *p;
+            if (pug_str_put(out, c) == -1) {
+              goto fail;
+            }
+          }
+          if (pug_str_put(out, '"') == -1) {
+            goto fail;
+          }
+        }
+      }
+    }
+
+    if (node->attrs.len > 0) {
+      if (pug_str_put(out, ' ') == -1) {
+        goto fail;
+      }
+      if (pug_interpolate_variables(node->attrs, ctx_json, item, loop_var, out) == -1) {
+        goto fail;
+      }
+    }
+
+    if (is_self_closing(node->tag)) {
+      if (pug_str_append(out, " />\n") == -1) goto fail;
+    } else {
+      if (node->text.len > 0) {
+        if (pug_str_put(out, '>') == -1) goto fail;
+        if (pug_interpolate_variables(node->text, ctx_json, item, loop_var, out) == -1) goto fail;
+        if (pug_str_append(out, "</") == -1) goto fail;
+        struct pug_str_t tag_name = node->tag.len > 0 ? node->tag : pug_str_n("div", 3);
+        if (pug_str_push(out, tag_name.buf, tag_name.len) == -1) goto fail;
+        if (pug_str_append(out, ">\n") == -1) goto fail;
+      } else if (node->head == NULL) {
+        if (pug_str_append(out, "></") == -1) goto fail;
+        struct pug_str_t tag_name = node->tag.len > 0 ? node->tag : pug_str_n("div", 3);
+        if (pug_str_push(out, tag_name.buf, tag_name.len) == -1) goto fail;
+        if (pug_str_append(out, ">\n") == -1) goto fail;
+      } else {
+        if (pug_str_append(out, ">\n") == -1) goto fail;
+        struct pug_ast_t *child = node->head;
+        while (child != NULL) {
+          if (pug_ast_node_render(child, ctx_json, item, loop_var, indent_level + 1, indent_str, out) == -1) {
+            goto fail;
+          }
+          child = child->next;
+        }
+        int curr_target_len = indent_level * 2;
+        indent_str->len = (size_t)curr_target_len;
+        if (indent_str->buf && indent_str->capacity > indent_str->len) {
+          indent_str->buf[indent_str->len] = '\0';
+        }
+
+        if (pug_str_push(out, indent_str->buf, indent_str->len) == -1) goto fail;
+        if (pug_str_append(out, "</") == -1) goto fail;
+        struct pug_str_t tag_name = node->tag.len > 0 ? node->tag : pug_str_n("div", 3);
+        if (pug_str_push(out, tag_name.buf, tag_name.len) == -1) goto fail;
+        if (pug_str_append(out, ">\n") == -1) goto fail;
+      }
+    }
+  }  
+  else if (node->type == pug_node_code_block) {
+    if (pug_str_push(out, indent_str->buf, indent_str->len) == -1) goto fail;
+    if (pug_str_put(out, '<') == -1) goto fail;
+    if (pug_str_push(out, node->tag.buf, node->tag.len) == -1) goto fail;
+    if (pug_str_append(out, ">\n") == -1) goto fail;
+
+    struct pug_ast_t *child = node->head;
+    while (child != NULL) {
+      if (pug_ast_node_render(child, ctx_json, item, loop_var, indent_level + 1, indent_str, out) == -1) {
+        goto fail;
+      }
+      child = child->next;
+    }
+    
+    int curr_target_len = indent_level * 2;
+    indent_str->len = (size_t)curr_target_len;
+    if (indent_str->buf && indent_str->capacity > indent_str->len) {
+      indent_str->buf[indent_str->len] = '\0';
+    }
+
+    if (pug_str_push(out, indent_str->buf, indent_str->len) == -1) goto fail;
+    if (pug_str_append(out, "</") == -1) goto fail;
+    if (pug_str_push(out, node->tag.buf, node->tag.len) == -1) goto fail;
+    if (pug_str_append(out, ">\n") == -1) goto fail;
+  }  
+  else if (node->type == pug_node_text) {
+    if (node->text.len > 0) {
+      int inside_pre = is_inside_pre(node);
+      if (!inside_pre) {
+        if (pug_str_push(out, indent_str->buf, indent_str->len) == -1) goto fail;
+      }
+      if (pug_interpolate_variables(node->text, ctx_json, item, loop_var, out) == -1) goto fail;
+      if (pug_str_put(out, '\n') == -1) goto fail;
+    }
+    
+    struct pug_ast_t *child = node->head;
+    while (child != NULL) {
+      if (pug_ast_node_render(child, ctx_json, item, loop_var, indent_level, indent_str, out) == -1) {
+        goto fail;
+      }
+      child = child->next;
+    }
+  }  
+  else if (node->type == pug_node_if) {
+    const char *p = node->tag.buf + 2;
+    const char *end = node->tag.buf + node->tag.len;
+    while (p < end && (*p == ' ' || *p == '\t')) p++;
+    
+    int condition_met = 0;
+    if (p < end) {
+      size_t k_len = 0;
+      while (p + k_len < end && p[k_len] != ' ' && p[k_len] != '\t') k_len++;
+      struct pug_str_t local_key = pug_str_n(p, k_len);
+
+      struct pug_str_t val = pug_json_get_tok(*ctx_json, local_key);
+      if (
+        val.len > 0 && !pug_str_equals(val, pug_str_s("false")) &&
+        !pug_str_equals(val, pug_str_s("null")) && !pug_str_equals(val, pug_str_s("\"\""))
+      ) {
+        condition_met = 1;
+      }
+    }
+
+    if (condition_met) {
+      struct pug_ast_t *child = node->head;
+      while (child != NULL) {
+        if (pug_ast_node_render(child, ctx_json, item, loop_var, indent_level, indent_str, out) == -1) {
+          goto fail;
+        }
+        child = child->next;
+      }
+    } 
+    else {
+      struct pug_ast_t *next_node = node->next;
+      if (next_node != NULL && next_node->type == pug_node_else) {
+        struct pug_ast_t *child = next_node->head;
+        while (child != NULL) {
+          if (pug_ast_node_render(child, ctx_json, item, loop_var, indent_level, indent_str, out) == -1) {
+            goto fail;
+          }
+          child = child->next;
+        }
+      }
+    }
+  }  
+  else if (node->type == pug_node_else) {
+    return 0;
+  }
+  else if (node->type == pug_node_each) {
+    const char *p = node->tag.buf;
+    const char *end = node->tag.buf + node->tag.len;
+    if (node->tag.len > 5 && memcmp(p, "each ", 5) == 0) {
+        p += 5;
+    }
+    p = pug_skip_whitespace(p, end);
+
+    const char *var_name_start = p;
+    while (p < end && *p != ' ' && *p != '\t') p++;
+    struct pug_str_t loop_var_local = pug_str_n(var_name_start, (size_t)(p - var_name_start)); 
+    p = pug_skip_whitespace(p, end);
+    if (p + 3 < end && memcmp(p, "in ", 3) == 0) {
+        p += 3;
+        p = pug_skip_whitespace(p, end);
+
+        struct pug_str_t array_key = pug_str_n(p, (size_t)(end - p));
+        struct pug_str_t arr_val = pug_json_get_tok(*ctx_json, array_key);
+        if (arr_val.buf && arr_val.len > 0) {
+            int i = 0;
+            while (1) {
+                const char *elem_start = pug_json_find_in_array(arr_val.buf, arr_val.buf + arr_val.len, i);
+                if (!elem_start) break;
+
+                const char *elem_end = pug_find_json_value_end(elem_start, arr_val.buf + arr_val.len);
+                struct pug_str_t item_val = pug_str_n(elem_start, (size_t)(elem_end - elem_start));
+
+                if (item_val.len >= 2 && item_val.buf[0] == '"' && item_val.buf[item_val.len - 1] == '"') {
+                    item_val.buf++;
+                    item_val.len -= 2;
+                }
+
+                struct pug_ast_t *child = node->head;
+                while (child != NULL) {
+                    if (pug_ast_node_render(child, ctx_json, item_val, loop_var_local, indent_level, indent_str, out) == -1) {
+                        goto fail;
+                    }
+                    child = child->next;
+                }
+                i++;
+            }
+        }
+    }
+  }
+  return 0;
+
+fail:
+  pug_str_free(out);
+  return -1;
+}
+
 int lte_pug_render(
   const char *input, size_t len,
   struct pug_str_t *ctx, struct pug_str_t *out
 ) {
+  int result = -1;
   struct pug_ast_t *root = NULL;
+  struct pug_str_t indent_str = pug_str_n(NULL, 0);
   if (!input || len == 0 || !out) return -1;
   if (pug_parse_ast(input, len, &root)) return -1;
-  (void)ctx;
+  result = pug_ast_node_render(root, ctx, pug_str_n(NULL, 0), pug_str_n(NULL, 0), 0, &indent_str, out);
+  if (indent_str.buf) free(indent_str.buf);
+  #ifdef TEST_PUG
   pug_ast_print(root, 0);
+  #endif
   pug_ast_free(root);
-  return -1;
+  return result;
 }
 
 int lte_pug_file_render(
@@ -741,9 +1181,18 @@ int main(int argc, char **argv) {
   if(argc > 1) {
     struct pug_str_t ctx = pug_str_n(NULL, 0);
     struct pug_str_t out = pug_str_n(NULL, 0);
+    if (argc > 2) {
+      char *js = NULL;
+      size_t len = 0;
+      if (read_file(argv[2], &js, &len) == 0) {
+        ctx = pug_str_n(js, len);
+      }
+    }
     if (lte_pug_file_render(argv[1], &ctx, &out)) {
       return -1;
     }
+    pug_str_free(&ctx);
+    printf("%.*s\n", (int)out.len, out.buf);
     pug_str_free(&out);
     return 0;
   }
