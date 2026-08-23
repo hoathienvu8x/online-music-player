@@ -448,6 +448,89 @@ static int read_file(const char *fpath, char **content, size_t *len) {
   return 0;
 }
 
+static int pug_str_print(struct pug_str_t s) {
+  size_t written = fwrite(s.buf, 1, s.len, stdout);
+  if (written != s.len) {
+    return -1;
+  }
+  return 0;
+}
+
+static void pug_ast_print(struct pug_ast_t *node, int depth) {
+  if (!node) return;
+  if (node->type == pug_node_root) {
+    pug_ast_print(node->head, depth);
+    return;
+  }
+  for (int i = 0; i < depth; i++) printf("  ");
+
+  const char *type_str = "";
+  switch(node->type) {
+    case pug_node_doctype: type_str = "DOCTYPE"; break;
+    case pug_node_tag: type_str = "TAG"; break;
+    case pug_node_text: type_str = "TEXT"; break;
+    case pug_node_code_block: type_str = "CODE_BLOCK"; break;
+    case pug_node_if: type_str = "IF"; break;
+    case pug_node_else: type_str = "ELSE"; break;
+    case pug_node_each: type_str = "EACH"; break;
+    case pug_node_root: default: break;
+  }
+
+  printf("[%s] ", type_str);
+  
+  if (node->tag.len > 0) {
+    printf("Name: \x1b[32m");
+    pug_str_print(node->tag);
+    printf("\x1b[0m ");
+  }
+
+  if (node->selector.len > 0) {
+    printf("Selector (");
+    const char *ptr = node->selector.buf;
+    const char *end = node->selector.buf + node->selector.len;
+    
+    int first = 1;
+    while (ptr < end) {
+      if (*ptr == '#') {
+        ptr++;
+        const char *id_start = ptr;
+        while (ptr < end && *ptr != '#' && *ptr != '.') ptr++;
+        if (!first) printf(", ");
+        printf("id: ");
+        fwrite(id_start, 1, ptr - id_start, stdout);
+        first = 0;
+      } else if (*ptr == '.') {
+        ptr++;
+        const char *class_start = ptr;
+        while (ptr < end && *ptr != '#' && *ptr != '.') ptr++;
+        if (!first) printf(", ");
+        printf("class: ");
+        fwrite(class_start, 1, ptr - class_start, stdout);
+        first = 0;
+      } else {
+        ptr++;
+      }
+    }
+    printf(") ");
+  }
+
+  if (node->attrs.len > 0) {
+    printf("Attrs: \x1b[34m");
+    pug_str_print(node->attrs);
+    printf("\x1b[0m ");
+  }
+
+  if (node->text.len > 0) {
+    printf("Content:\n\x1b[33m");
+    pug_str_print(node->text);
+  }
+  
+  printf("\x1b[0m\n");
+
+  pug_ast_print(node->head, depth + 1);
+  pug_ast_print(node->next, depth);
+}
+
 int lte_pug_render(
   const char *input, size_t len,
   struct pug_str_t *ctx, struct pug_str_t *out
@@ -456,6 +539,7 @@ int lte_pug_render(
   if (!input || len == 0 || !out) return -1;
   if (pug_parse_ast(input, len, &root)) return -1;
   (void)ctx;
+  pug_ast_print(root, 0);
   pug_ast_free(root);
   return -1;
 }
@@ -488,3 +572,17 @@ void pug_str_free(struct pug_str_t *s) {
   if (s->buf) free(s->buf);
   s->buf = NULL, s->len = s->capacity = 0;
 }
+#ifdef TEST_PUG
+int main(int argc, char **argv) {
+  if(argc > 1) {
+    struct pug_str_t ctx = pug_str_n(NULL, 0);
+    struct pug_str_t out = pug_str_n(NULL, 0);
+    if (lte_pug_file_render(argv[1], &ctx, &out)) {
+      return -1;
+    }
+    pug_str_free(&out);
+    return 0;
+  }
+  return -1;
+}
+#endif

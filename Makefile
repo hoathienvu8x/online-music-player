@@ -18,6 +18,9 @@ objects:
 	@echo "Create 'objects' folder ..."
 	@mkdir -p objects
 
+test_pug:
+	@$(CC) $(CFLAGS) pug.c -o $@ $(LDFLAGS) -DTEST_PUG=1
+
 objects/.o: .c
 ifeq ($(build),release)
 	@echo "Build release '$@' object ..."
