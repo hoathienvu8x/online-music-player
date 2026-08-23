@@ -352,7 +352,6 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
         rem_offset = (name_len == 0 && (trimmed.buf[0] == '#' || trimmed.buf[0] == '.')) ? 0 : name_len;
         if (rem_offset < trimmed.len) {
           struct pug_str_t remainder = pug_str_n(trimmed.buf + rem_offset, trimmed.len - rem_offset);
-          
           if (remainder.buf[0] == '(') {
             const char *paren_open = remainder.buf + 1;
             const char *paren_close = pug_str_memrchr(paren_open, ')', remainder.len);
@@ -800,8 +799,51 @@ static int pug_interpolate_variables(
         }
 
         if (val.buf && val.len > 0) {
-          if (pug_str_push(out, val.buf, val.len) == -1) {
-            return -1;
+          const char *v_ptr = val.buf;
+          const char *v_end = val.buf + val.len;
+
+          if (val.len >= 2 && *v_ptr == '"' && *(v_end - 1) == '"') {
+            v_ptr++;
+            v_end--;
+          }
+
+          while (v_ptr < v_end) {
+            if (*v_ptr == '\\' && v_ptr + 1 < v_end) {
+              v_ptr++;
+              char esc = *v_ptr;
+              if (esc == 'n') {
+                if (pug_str_put(out, '\n') == -1) return -1;
+              } else if (esc == 't') {
+                if (pug_str_put(out, '\t') == -1) return -1;
+              } else if (esc == 'r') {
+                if (pug_str_put(out, '\r') == -1) return -1;
+              } else if (esc == '"' || esc == '\\' || esc == '/') {
+                if (pug_str_put(out, esc) == -1) return -1;
+              } else if (esc == 'u' && v_ptr + 4 < v_end) {
+                char hex[5] = {v_ptr[1], v_ptr[2], v_ptr[3], v_ptr[4], '\0'};
+                unsigned int codepoint = (unsigned int)strtoul(hex, NULL, 16);
+                v_ptr += 4;
+
+                if (codepoint < 0x80) {
+                  if (pug_str_put(out, (char)codepoint) == -1) return -1;
+                } else if (codepoint < 0x800) {
+                  if (pug_str_put(out, (char)(0xC0 | (codepoint >> 6))) == -1) return -1;
+                  if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
+                } else {
+                  if (pug_str_put(out, (char)(0xE0 | (codepoint >> 12))) == -1) return -1;
+                  if (pug_str_put(out, (char)(0x80 | ((codepoint >> 6) & 0x3F))) == -1) return -1;
+                  if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
+                }
+              } else {
+                if (pug_str_put(out, '\\') == -1) return -1;
+                if (pug_str_put(out, esc) == -1) return -1;
+              }
+            } else {
+              if (pug_str_put(out, *v_ptr) == -1) {
+                return -1;
+              }
+            }
+            v_ptr++;
           }
         }
         
