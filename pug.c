@@ -295,6 +295,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
         is_code_block_decl = 1;
       } else {
         for (i = 0; i < trimmed.len; i++) {
+          if (trimmed.buf[i] == ' ') break;
           if (trimmed.buf[i] == '.') {
             if (i + 1 == trimmed.len) is_code_block_decl = 1;
             break;
@@ -333,11 +334,15 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
         size_t name_len = 0;
         size_t rem_offset;
 
-        while (name_len < trimmed.len && 
-               trimmed.buf[name_len] != ' ' && 
-               trimmed.buf[name_len] != '(' && 
-               trimmed.buf[name_len] != '#' && 
-               trimmed.buf[name_len] != '.') {
+        while (name_len < trimmed.len) {
+          if (
+            trimmed.buf[name_len] == ' ' ||
+            trimmed.buf[name_len] == '(' || 
+            trimmed.buf[name_len] == '#' || 
+            trimmed.buf[name_len] == '.'
+          ) {
+            break;
+          }
           name_len++;
         }
 
