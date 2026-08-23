@@ -198,7 +198,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
         new_node = pug_ast_create(pug_node_if, indent);
         if (new_node) {
           trimmed = pug_str_n(trimmed.buf + 2, trimmed.len - 2);
-          new_node->text = pug_str_trim(trimmed);
+          new_node->tag = pug_str_trim(trimmed);
         }
       } 
       else if (pug_str_starts_with(trimmed, "- else")) {
@@ -220,7 +220,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
               continue;
             } else {
               new_node = pug_ast_create(pug_node_text, indent);
-              if (new_node) new_node->text = raw_line;
+              if (new_node) new_node->tag = raw_line;
             }
           } else {
             new_node = pug_ast_create(pug_node_tag, indent);
@@ -239,7 +239,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
           new_node = pug_ast_create(pug_node_else, indent);
           if (new_node) {
             trimmed = pug_str_n(trimmed.buf + 2, trimmed.len - 2);
-            new_node->text = pug_str_trim(trimmed);
+            new_node->tag = pug_str_trim(trimmed);
           }
         }
       } 
@@ -247,7 +247,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
         new_node = pug_ast_create(pug_node_each, indent);
         if (new_node) {
           trimmed = pug_str_n(trimmed.buf + 2, trimmed.len - 2);
-          new_node->text = pug_str_trim(trimmed);
+          new_node->tag = pug_str_trim(trimmed);
         }
       } 
       else {
@@ -1096,7 +1096,12 @@ static int pug_ast_node_render(
         p = pug_skip_whitespace(p, end);
 
         struct pug_str_t array_key = pug_str_n(p, (size_t)(end - p));
-        struct pug_str_t arr_val = pug_json_get_tok(*ctx_json, array_key);
+        struct pug_str_t arr_val = pug_str_n(NULL, 0);
+        if (array_key.len > 0 && array_key.buf[0] == '[') {
+          arr_val = array_key;
+        } else {
+          arr_val = pug_json_get_tok(*ctx_json, array_key);
+        }
         if (arr_val.buf && arr_val.len > 0) {
             int i = 0;
             while (1) {
