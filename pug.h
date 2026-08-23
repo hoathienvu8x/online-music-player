@@ -8,6 +8,9 @@ struct pug_str_t {
   size_t len, capacity;  
 };
 
+struct pug_str_t pug_str_n(const char *buf, size_t len);
+struct pug_str_t pug_str_s(const char *buf);
+
 int lte_pug_render(
   const char *input, size_t len,
   struct pug_str_t *ctx, struct pug_str_t *out
