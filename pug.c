@@ -4,6 +4,9 @@
 #include <ctype.h>
 
 #include "pug.h"
+#ifdef USE_PARSON
+  #include "parson.h"
+#endif
 
 #define PUG_MAX_STACK_DEPTH 100
 
@@ -1235,10 +1238,22 @@ int main(int argc, char **argv) {
     struct pug_str_t out = pug_str_n(NULL, 0);
     if (argc > 2) {
       char *js = NULL;
+      #ifndef USE_PARSON
       size_t len = 0;
       if (read_file(argv[2], &js, &len) == 0) {
         ctx = pug_str_n(js, len);
       }
+      #else
+      JSON_Value *val = json_parse_file(argv[2]);
+      if (val) {
+        js = json_serialize_to_string(val);
+        if (js) {
+          ctx = pug_str_n(js, strlen(js));
+          pug_str_print(ctx);
+        }
+        json_value_free(val);
+      }
+      #endif
     }
     if (lte_pug_file_render(argv[1], &ctx, &out)) {
       return -1;
