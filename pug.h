@@ -13,10 +13,11 @@ struct pug_str_t pug_str_s(const char *buf);
 
 int lte_pug_render(
   const char *input, size_t len,
-  struct pug_str_t *ctx, struct pug_str_t *out
+  struct pug_str_t *ctx, struct pug_str_t *out, int minify
 );
 int lte_pug_file_render(
-  const char *fpath, struct pug_str_t *ctx, struct pug_str_t *out
+  const char *fpath, struct pug_str_t *ctx,
+  struct pug_str_t *out, int minify
 );
 void pug_str_free(struct pug_str_t *s);
 

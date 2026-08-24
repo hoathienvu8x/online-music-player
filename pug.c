@@ -1185,9 +1185,292 @@ fail:
   return -1;
 }
 
+static struct pug_str_t pug_trim_buffer(struct pug_str_t s) {
+  size_t leading_spaces;
+  char *buf = s.buf;
+  char *end, *start = buf;
+
+  if (!buf || s.len == 0) return s;
+
+  while (*start && isspace((unsigned char)*start)) start++;
+  leading_spaces = start - buf;
+
+  if (leading_spaces > 0) {
+    memmove(buf, start, strlen(start) + 1);
+    s.len -= leading_spaces;
+  }
+  end = buf;
+  if (s.len > 0) {
+    end = buf + s.len - 1;
+    while (end >= buf && isspace((unsigned char)*end)) {
+      *end = '\0';
+      end--;
+      s.len--;
+    }
+  }
+
+  if (s.len > 0 && end >= buf && *end == ';') {
+    end--;
+    s.len--;
+    while (end >= buf && isspace((unsigned char)*end)) {
+      *end = '\0';
+      end--;
+      s.len--;
+    }
+    *(end + 1) = ';';
+    *(end + 2) = '\0';
+    s.len = (size_t)((end + 2) - buf);
+  }
+  return s;
+}
+static int is_punct(char c) {
+  return c == '{' || c == '}' || c == ':' || c == ',' || c == ';';
+}
+static int is_regex_start(char last) {
+  return (last == 0 || strchr("=({[,!?:;", last));
+}
+static int is_js_id(unsigned char c) {
+  return isalnum(c) || c == '_' || c == '$';
+}
+static char *find_tag_end(char *p, char *end, const char *tag) {
+  size_t n = strlen(tag);
+  while (p + n <= end) {
+    if (memcmp(p, tag, n) == 0) {
+      return p;
+    }
+    p++;
+  }
+  return NULL;
+}
+static struct pug_str_t pug_css_min(struct pug_str_t s) {
+  char *src, *dst, *end, *css = s.buf;
+  size_t len = s.len;
+  
+  if (!css || len == 0) return s;
+
+  src = css, dst = css, end = css + len;
+
+  while (src < end) {
+    if (*src == '/' && *(src + 1) == '*') {
+      src += 2;
+      while (src < end && !(*src == '*' && *(src + 1) == '/')) src++;
+      if (src < end) src += 2;
+      continue;
+    }
+
+    if (isspace((unsigned char)*src)) {
+      if (dst > css && !is_punct(*(dst - 1))) {
+        *dst++ = ' ';
+      }
+      while (src < end && isspace((unsigned char)*src)) src++;
+      continue;
+    }
+
+    if (is_punct(*src)) {
+      if (dst > css && *(dst - 1) == ' ')
+        dst--;
+
+      *dst++ = *src++;
+      while (src < end && isspace((unsigned char)*src))
+        src++;
+      continue;
+    }
+
+    *dst++ = *src++;
+  }
+  *dst = '\0';
+  s.len = (size_t)(dst - css);
+  return pug_trim_buffer(s);
+}
+
+static struct pug_str_t pug_js_min(struct pug_str_t s) {
+  char *src, *dst, *end, *js = s.buf, last_sig = 0;
+  int in_string = 0, in_regex = 0, escaped = 0;
+  size_t len = s.len;
+
+  if (!js || len == 0) return s;
+
+  src = js, dst = js;
+
+  end = js + len;
+  while (src < end) {
+    if (in_string || in_regex) {
+      if (escaped) {
+        escaped = 0;
+      } else if (*src == '\\') {
+        escaped = 1;
+      } else if (in_string && *src == in_string) {
+        in_string = 0;
+      } else if (in_regex && *src == '/' && !escaped) {
+        in_regex = 0;
+      }
+      *dst++ = *src++;
+      continue;
+    }
+
+    if (src + 1 < end && *src == '/' && *(src + 1) == '/') {
+      src += 2;
+      while (src < end && *src != '\n' && *src != '\r') src++;
+      continue;
+    }
+
+    if (src + 1 < end && *src == '/' && *(src + 1) == '*') {
+      src += 2;
+      while (src + 1 < end && !(*src == '*' && *(src + 1) == '/')) src++;
+      if (src + 1 < end) src += 2;
+      continue;
+    }
+
+    if (*src == '"' || *src == '\'' || *src == '`') {
+      in_string = *src;
+      last_sig = *src;
+      *dst++ = *src++;
+      continue;
+    }
+
+    if (*src == '/' && is_regex_start(last_sig)) {
+      in_regex = 1;
+      last_sig = *src;
+      *dst++ = *src++;
+      continue;
+    }
+
+    if (isspace((unsigned char)*src)) {
+      if (dst > js && is_js_id((unsigned char)*(dst - 1))) {
+        char *next = src + 1;
+        while (next < end && isspace((unsigned char)*next)) next++;
+        if (next < end && is_js_id((unsigned char)*next)) {
+          *dst++ = ' ';
+        }
+      }
+      while (src < end && isspace((unsigned char)*src)) src++;
+    } else {
+      *dst++ = *src;
+      last_sig = *src;
+      src++;
+    }
+  }
+  *dst = '\0';
+  s.len = (size_t)(dst - js);
+  return pug_trim_buffer(s);
+}
+static struct pug_str_t minify_pug_html(struct pug_str_t pug) {
+  char *src, *dst, *end, *html = pug.buf;
+  size_t len = pug.len;
+
+  if (!html || len == 0) return pug;
+
+  src = html, dst = html, end = html + len;
+
+  while (src < end) {
+    if (src + 7 <= end && memcmp(src, "<script", 7) == 0) {
+      size_t tag_len;
+      int has_src = 0;
+      char *p, *js_end, *tag_end = memchr(src, '>', end - src);
+      if (!tag_end) break;
+
+      tag_len = tag_end - src + 1;
+      for (p = src; p < tag_end - 2; p++) {
+        if (
+          memcmp(p, "src", 3) == 0 &&
+          (p == src + 7 || isspace(*(p-1)) || *(p-1) == '<')
+        ) {
+          has_src = 1;
+          break;
+        }
+      }
+      memmove(dst, src, tag_len);
+      dst += tag_len;
+      src = tag_end + 1;
+
+      js_end = find_tag_end(src, end, "</script>");
+      if (!js_end) break;
+
+      if (has_src) {
+        size_t inner_len = js_end - src;
+        if (inner_len > 0) {
+          memmove(dst, src, inner_len);
+          dst += inner_len;
+        }
+      } else {
+        struct pug_str_t js_str = pug_js_min(pug_str_n(src, (size_t)(js_end - src)));
+        memmove(dst, js_str.buf, js_str.len);
+        dst += js_str.len;
+      }
+      src = js_end;
+      continue;
+    }
+
+    if (src + 6 <= end && memcmp(src, "<style", 6) == 0) {
+      size_t tag_len;
+      char *css_end, *tag_end = memchr(src, '>', end - src);
+      if (!tag_end) break;
+
+      tag_len = tag_end - src + 1;
+      memmove(dst, src, tag_len);
+      dst += tag_len;
+      src = tag_end + 1;
+
+      css_end = find_tag_end(src, end, "</style>");
+      if (!css_end) break;
+
+      struct pug_str_t css_str = pug_css_min(pug_str_n(src, (size_t)(css_end - src)));
+
+      memmove(dst, css_str.buf, css_str.len);
+      dst += css_str.len;
+
+      src = css_end;
+      continue;
+    }
+
+    if (src + 4 <= end && memcmp(src, "<pre", 4) == 0) {
+      size_t tag_len, inner_len;
+      char *pre_end, *tag_end = memchr(src, '>', end - src);
+      if (!tag_end) break;
+      tag_len = tag_end - src + 1;
+      memmove(dst, src, tag_len);
+      dst += tag_len;
+      src = tag_end + 1;
+      pre_end = find_tag_end(src, end, "</pre>");
+      if (!pre_end) break;
+      inner_len = pre_end - src;
+      if (inner_len > 0) {
+        memmove(dst, src, inner_len);
+        dst += inner_len;
+      }
+      memmove(dst, pre_end, 6);
+      dst += 6;
+      src = pre_end + 6;
+      continue;
+    }
+
+    if (*src == '\n' || *src == '\r' || *src == '\t') {
+      src++;
+      continue;
+    }
+
+    if (isspace((unsigned char)*src)) {
+      if (dst > html && *(dst - 1) != '>') {
+        *dst++ = ' ';
+      }
+      while (src + 1 < end && isspace((unsigned char)*(src + 1))) {
+        src++;
+      }
+    } else {
+      *dst++ = *src;
+    }
+    src++;
+  }
+
+  *dst = '\0';
+  pug.len = (size_t)(dst - html);
+
+  return pug_trim_buffer(pug);
+}
+
 int lte_pug_render(
   const char *input, size_t len,
-  struct pug_str_t *ctx, struct pug_str_t *out
+  struct pug_str_t *ctx, struct pug_str_t *out, int minify
 ) {
   int result = -1;
   struct pug_ast_t *root = NULL;
@@ -1196,6 +1479,11 @@ int lte_pug_render(
   if (pug_parse_ast(input, len, &root)) return -1;
   result = pug_ast_node_render(root, ctx, pug_str_n(NULL, 0), pug_str_n(NULL, 0), 0, &indent_str, out);
   if (indent_str.buf) free(indent_str.buf);
+  if (minify && result == 0) {
+    if (out->buf && out->len > 0) {
+      *out = minify_pug_html(*out);
+    }
+  }
   #ifdef TEST_PUG
   pug_ast_print(root, 0);
   #endif
@@ -1204,7 +1492,8 @@ int lte_pug_render(
 }
 
 int lte_pug_file_render(
-  const char *fpath, struct pug_str_t *ctx, struct pug_str_t *out
+  const char *fpath, struct pug_str_t *ctx,
+  struct pug_str_t *out, int minify
 ) {
   int rc = -1;
   char *content = NULL;
@@ -1212,7 +1501,7 @@ int lte_pug_file_render(
   if (read_file(fpath, &content, &len) != 0) {
     return -1;
   }
-  rc = lte_pug_render(content, len, ctx, out);
+  rc = lte_pug_render(content, len, ctx, out, minify);
   free(content);
   return rc;
 }
@@ -1255,7 +1544,7 @@ int main(int argc, char **argv) {
       }
       #endif
     }
-    if (lte_pug_file_render(argv[1], &ctx, &out)) {
+    if (lte_pug_file_render(argv[1], &ctx, &out, 1)) {
       return -1;
     }
     pug_str_free(&ctx);
