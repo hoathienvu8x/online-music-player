@@ -1,0 +1,1721 @@
+doctype html
+html(lang="vi")
+  head
+    meta(charset="utf-8")
+    link(rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ctitle%3Ewaveform%3C/title%3E%3Cpath fill=%22%23ff758c%22 d=%22M22 12L20 13L19 14L18 13L17 16L16 13L15 21L14 13L13 15L12 13L11 17L10 13L9 22L8 13L7 19L6 13L5 14L4 13L2 12L4 11L5 10L6 11L7 5L8 11L9 2L10 11L11 7L12 11L13 9L14 11L15 3L16 11L17 8L18 11L19 10L20 11L22 12Z%22 /%3E%3C/svg%3E")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no")
+    title #{title|encode}
+    style.
+      /* --- KHAI BÁO SVG ICONS CHUYÊN DỤNG (Áp dụng trực tiếp cho button hoặc phần tử) --- */
+      [class^="fa-"], [class*=" fa-"] {
+        display: inline-block;
+        vertical-align: middle;
+        font-style: normal;
+      }
+      /* Khi button mang class icon, dùng :before trực tiếp của button đó */
+      button[class^="fa-"]:before, button[class*=" fa-"]:before, .btn-icon:before {
+        content: "";
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        vertical-align: middle;
+      }
+      /* 1. Mũi tên trái (arrow-left) */
+      .fa-arrow-left:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666666'%3E%3Cpath d='M10.05 16.94V12.94H18.97L19 10.93H10.05V6.94L5.05 11.94Z' /%3E%3C/svg%3E");
+      }
+      /* 2. Danh sách (list-ul) */
+      .fa-list-ul:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666666'%3E%3Cpath d='M7,5H21V7H7V5M7,13V11H21V13H7M4,4.5A1.5,1.5 0 0,1 5.5,6A1.5,1.5 0 0,1 4,7.5A1.5,1.5 0 0,1 2.5,6A1.5,1.5 0 0,1 4,4.5M4,10.5A1.5,1.5 0 0,1 5.5,12A1.5,1.5 0 0,1 4,13.5A1.5,1.5 0 0,1 2.5,12A1.5,1.5 0 0,1 4,10.5M7,19V17H21V19H7M4,16.5A1.5,1.5 0 0,1 5.5,18A1.5,1.5 0 0,1 4,19.5A1.5,1.5 0 0,1 2.5,18A1.5,1.5 0 0,1 4,16.5Z' /%3E%3C/svg%3E");
+      }
+      /* 3. Xáo trộn (shuffle) */
+      .fa-shuffle:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23444444'%3E%3Cpath d='M14.83,13.41L13.42,14.82L16.55,17.95L14.5,20H20V14.5L17.96,16.54L14.83,13.41M14.5,4L16.54,6.04L4,18.59L5.41,20L17.96,7.46L20,9.5V4M10.59,9.17L5.41,4L4,5.41L9.17,10.58L10.59,9.17Z' /%3E%3C/svg%3E");
+      }
+      /* 4. Bài trước (backward-step) */
+      .fa-backward-step:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23444444' d='M6,18V6H8V18H6M9.5,12L18,6V18L9.5,12Z' /%3E%3C/svg%3E");
+      }
+      /* 5. Phát (play) */
+      .fa-play:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='%23444444' d='M8,5.14V19.14L19,12.14L8,5.14Z'/%3E%3C/svg%3E");
+      }
+      /* Cho các nút play nền hồng (màu trắng) */
+      .play-pause.fa-play:before, .btn-play-playlist.fa-play:before,
+      .popup-play-btn.fa-play:before, .popup-song-play.fa-play:before,
+      .btn-play-queue.fa-play:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M8,5.14V19.14L19,12.14L8,5.14Z' /%3E%3C/svg%3E");
+      }
+      /* 6. Tạm dừng (pause) */
+      .fa-pause:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M14,19H18V5H14M6,19H10V5H6V19Z' /%3E%3C/svg%3E");
+      }
+      /* 7. Bài tiếp (forward-step) */
+      .fa-forward-step:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23444444' d='M16,18H18V6H16M6,18L14.5,12L6,6V18Z' /%3E%3C/svg%3E");
+      }
+      /* 8. Lặp lại (repeat) */
+      .fa-repeat:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23444444' d='M17,17H7V14L3,18L7,22V19H19V13H17M7,7H17V10L21,6L17,2V5H5V11H7V7Z' /%3E%3C/svg%3E");
+      }
+      /* 9. Dấu cộng (plus) */
+      .fa-plus:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666666' d='M20 14H14V20H10V14H4V10H10V4H14V10H20V14Z' /%3E%3C/svg%3E");
+      }
+      /* 10. Thông tin (circle-info) */
+      .fa-circle-info:before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666666' d='M12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22M11 7H13V9H11V7M14 17H10V15H11V13H10V11H13V15H14V17Z' /%3E%3C/svg%3E"); }
+      /* 11. Đóng (xmark) */
+      .fa-xmark:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666666' d='M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z' /%3E%3C/svg%3E");
+      }
+      /* 12. Danh sách nhạc hàng đợi (list-music) */
+      .fa-list-music:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff758c' d='M15,6H3V8H15V6M15,10H3V12H15V10M3,16H11V14H3V16M17,6V14.18C16.69,14.07 16.35,14 16,14A3,3 0 0,0 13,17A3,3 0 0,0 16,20A3,3 0 0,0 19,17V8H22V6H17Z' /%3E%3C/svg%3E");
+      }
+      /* 13. Thùng rác (trash-can) */
+      .fa-trash-can:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666666' d='M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z' /%3E%3C/svg%3E");
+      }
+      .fa-floppy-disk::before {
+        content: "";
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em; /* Căn chỉnh chiều dọc cho đẹp mắt cùng chữ/icon khác */
+        background-color: currentColor; /* Giúp icon đổi màu theo màu chữ (color) của nút */
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z' /%3E%3C/svg%3E");
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z' /%3E%3C/svg%3E");
+        -webkit-mask-size: cover;
+        mask-size: cover;
+      }
+      /* Tùy chỉnh nút Lưu thành Playlist trong header của queuePopup */
+      .btn-save-playlist {
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+      }
+
+      .btn-save-playlist:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      /* Thiết lập chung & Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+        color: #333;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .music-container {
+        display: flex;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        width: 850px;
+        max-width: 95%;
+        max-height: 90vh;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+      /* --- PHẦN PLAYER --- */
+      .player-section {
+        flex: 1;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+        justify-content: center;
+      }
+      .header {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #666;
+      }
+      .header-btns {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .header-btn {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 18px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .header-btn:hover {
+        color: #ff758c;
+      }
+      .song-art {
+        width: 200px;
+        height: 200px;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        margin-bottom: 20px;
+      }
+      .song-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .song-info {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .song-info h3 {
+        font-size: 20px;
+        margin-bottom: 5px;
+        color: #222;
+      }
+      .song-info p {
+        font-size: 14px;
+        color: #666;
+      }
+      .progress-container {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 25px;
+      }
+      .progress-container input[type="range"] {
+        flex: 1;
+        accent-color: #ff758c;
+        cursor: pointer;
+        height: 5px;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .controls button {
+        background: none;
+        border: none;
+        color: #444;
+        font-size: 18px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .controls button:hover {
+        color: #ff758c;
+      }
+      .controls button.play-pause {
+        background: linear-gradient(135deg, #ff758c, #ff7eb3);
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
+        color: #fff;
+        box-shadow: 0 5px 15px rgba(255, 117, 140, 0.4);
+      }
+      .controls button.play-pause:hover {
+        transform: scale(1.05);
+        color: #fff;
+      }
+      /* --- PHẦN PLAYLIST --- */
+      .playlist-section {
+        width: 350px;
+        padding: 25px;
+        display: flex;
+        flex-direction: column;
+      }
+      .playlist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      .playlist-header-info h3 {
+        font-size: 18px;
+        color: #222;
+      }
+      .playlist-header-info span {
+        font-size: 12px;
+        color: #666;
+      }
+      .btn-play-playlist {
+        background: linear-gradient(135deg, #ff758c, #ff7eb3);
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(255, 117, 140, 0.3);
+        transition: 0.2s;
+      }
+      .btn-play-playlist:hover {
+        transform: scale(1.05);
+      }
+      .playlists-container {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+      .playlist-tracks {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease;
+      }
+      .playlist-tracks::-webkit-scrollbar {
+        width: 5px;
+      }
+      .playlist-tracks::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 5px;
+      }
+      .playlist-tracks.active {
+        opacity: 1;
+        visibility: visible;
+        position: relative;
+      }
+      /* Style bài hát (track-item) */
+      .track-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .track-item:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+      .track-item.active {
+        background: rgba(255, 117, 140, 0.12);
+        border-left: 4px solid #ff758c;
+      }
+      .track-item img {
+        width: 45px;
+        height: 45px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+      .track-detail {
+        flex: 1;
+      }
+      .track-detail h4 {
+        font-size: 14px;
+        margin-bottom: 3px;
+        color: #222;
+      }
+      .track-detail p {
+        font-size: 12px;
+        color: #666;
+      }
+      .track-duration {
+        font-size: 12px;
+        color: #666;
+      }
+      .add-to-queue-btn {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 50%;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .add-to-queue-btn:hover {
+        color: #ff758c;
+        background: rgba(0, 0, 0, 0.06);
+      }
+      /* --- POPUP CHỌN PLAYLIST & INFO --- */
+      .all-playlists-popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.3s ease;
+        z-index: 2000;
+      }
+      .all-playlists-popup.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      .popup-content-box {
+        background: #fff;
+        width: 450px;
+        max-width: 90%;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      .popup-header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        padding-bottom: 10px;
+      }
+      .popup-header-title h3 {
+        font-size: 16px;
+        color: #222;
+      }
+      .popup-close-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #666;
+      }
+      .popup-playlists-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 350px;
+        overflow-y: auto;
+        padding-right: 5px;
+      }
+      .popup-playlists-list::-webkit-scrollbar {
+        width: 5px;
+      }
+      .popup-playlists-list::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 5px;
+      }
+      .popup-playlist-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(0,0,0,0.03);
+        padding: 12px;
+        border-radius: 10px;
+        transition: 0.2s;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .popup-playlist-card:hover {
+        background: rgba(255, 117, 140, 0.08);
+        border-color: rgba(255, 117, 140, 0.3);
+      }
+      .popup-playlist-info h4 {
+        font-size: 14px;
+        color: #222;
+        margin-bottom: 3px;
+      }
+      .popup-playlist-info p {
+        font-size: 12px;
+        color: #666;
+      }
+      .popup-play-btn {
+        background: linear-gradient(135deg, #ff758c, #ff7eb3);
+        border: none;
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 3px 10px rgba(255, 117, 140, 0.3);
+        transition: 0.2s;
+      }
+      .popup-play-btn:hover {
+        transform: scale(1.05);
+      }
+      .popup-card-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .popup-info-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        color: #666;
+        cursor: pointer;
+        padding: 5px;
+        transition: 0.2s;
+      }
+      .popup-info-btn:hover {
+        color: #ff758c;
+      }
+      .popup-title-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .popup-back-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #666;
+        display: none;
+      }
+      .popup-back-btn:hover {
+        color: #ff758c;
+      }
+      .popup-song-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(0,0,0,0.02);
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.04);
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .popup-song-item:hover {
+        background: rgba(255, 117, 140, 0.06);
+      }
+      .popup-song-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .popup-song-left img {
+        width: 38px;
+        height: 38px;
+        border-radius: 6px;
+        object-fit: cover;
+      }
+      .popup-song-info h5 {
+        font-size: 13px;
+        color: #222;
+        margin-bottom: 2px;
+      }
+      .popup-song-info p {
+        font-size: 11px;
+        color: #666;
+      }
+      .popup-song-right {
+        font-size: 12px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .popup-song-play {
+        background: linear-gradient(135deg, #ff758c, #ff7eb3);
+        border: none;
+        color: #fff;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(255, 117, 140, 0.3);
+        transition: 0.2s;
+      }
+      .popup-song-play:hover {
+        transform: scale(1.15);
+      }
+      /* --- POPUP HÀNG ĐỢI --- */
+      .queue-popup {
+        position: fixed;
+        bottom: -180px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 850px;
+        max-width: 95%;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 117, 140, 0.3);
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.15);
+        border-radius: 15px 15px 0 0;
+        padding: 15px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: bottom 0.4s ease-in-out;
+        z-index: 1000;
+      }
+      .queue-popup.show {
+        bottom: 0;
+      }
+      .queue-popup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding-bottom: 8px;
+      }
+      .queue-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      /* Dùng icon trực tiếp cho button mở hàng đợi dạng thẻ chứa hoặc dùng span riêng */
+      .queue-info-icon:before {
+        content: "";
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff758c' d='M15,6H3V8H15V6M15,10H3V12H15V10M3,16H11V14H3V16M17,6V14.18C16.69,14.07 16.35,14 16,14A3,3 0 0,0 13,17A3,3 0 0,0 16,20A3,3 0 0,0 19,17V8H22V6H17Z' /%3E%3C/svg%3E");
+        vertical-align: middle;
+      }
+      .queue-text h4 {
+        font-size: 14px;
+        color: #222;
+      }
+      .queue-text p {
+        font-size: 11px;
+        color: #666;
+      }
+      .queue-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .btn-play-queue {
+        background: linear-gradient(135deg, #ff758c, #ff7eb3);
+        border: none;
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 4px 12px rgba(255, 117, 140, 0.4);
+        transition: 0.2s;
+      }
+      .btn-play-queue:hover {
+        transform: scale(1.05);
+      }
+      .btn-close-queue {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .btn-close-queue:hover {
+        color: #222;
+      }
+      .queue-list {
+        max-height: 150px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-right: 5px;
+      }
+      .queue-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      .queue-list::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+      }
+      .queue-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(0, 0, 0, 0.03);
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      .queue-item-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .queue-item img {
+        width: 30px;
+        height: 30px;
+        border-radius: 5px;
+        object-fit: cover;
+      }
+      .qi-title {
+        font-size: 13px;
+        color: #222;
+      }
+      .qi-artist {
+        font-size: 11px;
+        color: #666;
+      }
+      .queue-item-remove {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        transition: 0.2s;
+        font-size: 12px;
+      }
+      .queue-item-remove:hover {
+        color: #ff758c;
+      }
+      /* Màu sắc khi nút Shuffle hoặc Repeat được bật */
+      button.is-active {
+        color: #ff758c !important; /* Hoặc bất kỳ mã màu nào bạn muốn */
+      }
+      /* --- CSS CHO POPUP THÊM BÀI HÁT --- */
+      .btn-add-song-header {
+        background: none;
+        border: none;
+        color: #222;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: 0.2s;
+      }
+      .btn-add-song-header:hover {
+        background: rgba(255, 117, 140, 0.1);
+        color: #ff758c;
+      }
+
+      .add-song-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .form-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #444;
+      }
+
+      .form-input {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .form-input:focus {
+        border-color: #ff758c;
+      }
+
+      .form-submit-btn {
+        width: 100%;
+        justify-content: center;
+        margin-top: 5px;
+      }
+      @media (max-width: 768px) {
+        body {
+          align-items: flex-start;
+          height: 100vh;
+          overflow-y: auto;
+        }
+        .music-container {
+          width: 100vw;
+          height: 100vh;
+          max-width: 100vw;
+          max-height: none;
+          border-radius: 0;
+          border: none;
+          flex-direction: column;
+          overflow-y: auto;
+          box-shadow: none;
+        }
+        .player-section {
+          border-right: none;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+          padding: 20px;
+        }
+        .playlist-section {
+          width: 100%;
+          padding: 20px;
+          flex: none;
+          height: auto;
+        }
+        .playlists-container {
+          height: 250px;
+        }
+        .queue-popup {
+          width: 100vw;
+          max-width: 100vw;
+          border-radius: 15px 15px 0 0;
+          left: 0;
+          transform: none;
+        }
+      }
+  body
+    template#track-item-template
+      .track-item
+        img(class="track-thumb" src="" alt="Thumb")
+        .track-detail
+          h4.track-title
+          p.track-artist
+        span.track-duration
+        button(class="add-to-queue-btn fa-solid fa-plus" title="Thêm vào danh sách phát")
+
+    template#popup-playlist-card-template
+      .popup-playlist-card
+        .popup-playlist-info
+          h4.popup-pl-name
+          p.popup-pl-count
+
+        .popup-card-actions
+          button(class="popup-info-btn fa-solid fa-circle-info" title="Xem danh sách bài hát")
+          button.popup-play-btn.fa-solid.fa-play Phát ngay
+
+    template#popup-song-template
+      .popup-song-item
+        .popup-song-left
+          img(class="psi-thumb" src="" alt="Thumb")
+          .popup-song-info
+            h5.psi-title
+            p.psi-artist
+
+        .popup-song-right
+          span.psi-duration
+          button(class="add-to-queue-btn fa-solid fa-plus" title="Thêm vào danh sách chờ")
+          button(class="popup-song-play fa-solid fa-play" title="Phát bài này")
+
+    template#queue-item-template
+      .queue-item
+        .queue-item-left
+          img(class="qi-thumb" src="" alt="Thumb")
+          div
+            h4.qi-title
+            p.qi-artist
+
+        button(class="queue-item-remove fa-solid fa-trash-can" title="Xóa khỏi hàng đợi")
+
+    - if is_admin
+      template#add-song-popup-template
+        #addSongPopupModal.all-playlists-popup
+          .popup-content-box
+            .popup-header-title
+              .popup-title-wrapper
+                h3 Thêm bài hát mới
+              button#closeAddSongPopup.popup-close-btn.fa-solid.fa-xmark
+            form#addSongForm.add-song-form
+              .form-group
+                label(class="form-label" for="inputSongTitle") Tên bài hát:
+                input(type="text" id="inputSongTitle" class="form-input" required placeholder="Nhập tên bài hát...")
+              .form-group
+                label(class="form-label" for="inputSongArtist") Nghệ sĩ:
+                input(type="text" id="inputSongArtist" class="form-input" required placeholder="Nhập tên nghệ sĩ...")
+              .form-group
+                label(class="form-label" for="inputSongArt") Link ảnh (URL):
+                input(type="text" id="inputSongArt" class="form-input" placeholder="https://...")
+              .form-group
+                label(class="form-label" for="inputSongFile") Chọn tập tin nhạc từ máy:
+                input(type="file" id="inputSongFile" class="form-input" accept="audio/*")
+              .form-group
+                label(class="form-label" for="inputSongUrl") Hoặc dán Link nhạc MP3 (URL):
+                input(type="text" id="inputSongUrl" class="form-input" placeholder="https://...")
+              button(type="submit" class="popup-play-btn form-submit-btn") Thêm bài hát
+
+    .music-container
+      .player-section
+        .header
+          - if is_admin
+            button(class="btn-add-song-header fa-solid fa-plus" id="openAddSongPopupBtn" title="Thêm bài hát mới") Thêm bài hát
+          - else
+            h2 Đang phát
+          .header-btns
+            button(class="header-btn fa-solid fa-list-ul" id="openPlaylistPopup" title="Chọn Playlist")
+
+        .song-art
+          img(src="" alt="Album Art" id="current-art")
+
+        .song-info
+          h3#current-title Tên Bài Hát
+          p#current-artist Nghệ Sĩ
+
+        .progress-container
+          span#current-time 0:00
+          input(type="range" id="progress-bar" value="0" min="0" max="100")
+          span#duration 00:00
+
+        .controls
+          button#shuffle-btn.fa-solid.fa-shuffle
+          button#prev-btn.fa-solid.fa-backward-step
+          button#play-pause-btn.play-pause.fa-solid.fa-play
+          button#next-btn.fa-solid.fa-forward-step
+          button#repeat-btn.fa-solid.fa-repeat
+
+      .playlist-section
+        .playlist-header
+          .playlist-header-info
+            h3#playlist-title-name Top Thịnh Hành
+            span#playlist-count 0 bài hát
+ 
+          button(class="btn-play-playlist fa-solid fa-play" id="playEntirePlaylistBtn" title="Phát toàn bộ playlist") Phát
+
+        #playlistsContainer.playlists-container
+
+    #allPlaylistsPopup.all-playlists-popup
+      .popup-content-box
+        .popup-header-title
+          .popup-title-wrapper
+            button(class="popup-back-btn fa-solid fa-arrow-left" id="popupBackBtn" title="Quay lại danh sách")
+            h3#popupMainTitle Danh sách Playlist của bạn
+          button#closePlaylistPopup.popup-close-btn.fa-solid.fa-xmark
+
+        #popupPlaylistsList.popup-playlists-list
+
+    #queuePopup.queue-popup
+      .queue-popup-header
+        .queue-info
+          span.queue-info-icon
+          .queue-text
+            h4#queueCountText Đã thêm 0 bài hát
+            p Danh sách chờ phát tiếp theo
+
+        .queue-actions
+          button#playQueueBtn.btn-play-queue.fa-solid.fa-play Phát ngay
+          button#savePlaylistBtn.btn-save-playlist.fa-solid.fa-floppy-disk Lưu playlist
+          button#closeQueueBtn.btn-close-queue.fa-solid.fa-xmark
+
+      #queueList.queue-list
+
+    script.
+      (function() {
+        // 1. Cấu trúc dữ liệu JSON nguồn
+        let musicData = [
+          {
+            id: "playlist-1",
+            name: "Top Thịnh Hành",
+            tracks: [
+              {
+                id: "song_hash_001",
+                title: "Giai Điệu Ánh Sáng",
+                artist: "Artist A",
+                duration: "", 
+                art: [
+                  { src: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=96&auto=format&fit=crop&q=60", sizes: "96x96", mimeType: "image/jpeg" },
+                  { src: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=512&auto=format&fit=crop&q=60", sizes: "512x512", mimeType: "image/jpeg" }
+                ],
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+              },
+              {
+                id: "song_hash_002",
+                title: "Hành Trình Mới",
+                artist: "Artist B",
+                duration: "4:12",
+                art: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+              },
+              {
+                id: "song_hash_003",
+                title: "Khoảng Lặng",
+                artist: "Artist C",
+                duration: null,
+                art: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+              }
+            ]
+          },
+          {
+            id: "playlist-2",
+            name: "Lofi Chill",
+            tracks: [
+              {
+                id: "song_hash_004",
+                title: "Cà Phê Sáng Mưa",
+                artist: "Lofi Gurl",
+                duration: "3:10",
+                art: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+              },
+              {
+                id: "song_hash_005",
+                title: "Góc Phố Kỷ Niệm",
+                artist: "Chill Maker",
+                duration: "4:05",
+                art: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+              }
+            ]
+          },
+          {
+            id: "playlist-3",
+            name: "Remix Sôi Động",
+            tracks: [
+              {
+                id: "song_hash_006",
+                title: "Vũ Trụ Đêm Nay (Remix)",
+                artist: "DJ Max",
+                duration: "2:45",
+                art: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"
+              },
+              {
+                id: "song_hash_007",
+                title: "Bùng Nổ Đam Mê",
+                artist: "DJ Z",
+                duration: "3:20",
+                art: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60",
+                url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
+              }
+            ]
+          }
+        ];
+
+        let currentActivePlaylistId = "playlist-1";
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        let isShuffle = false;
+        let isRepeat = false;
+        
+        const audioElement = new Audio();
+
+        function getTrackArtUrl(artData) {
+          if (Array.isArray(artData) && artData.length > 0) {
+            return artData[0].src;
+          }
+          return artData || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60";
+        }
+
+        function getDynamicArtMetadata(artData, callback) {
+          if (Array.isArray(artData) && artData.length > 0) {
+            const formatted = artData.map(item => ({
+              src: item.src,
+              sizes: item.sizes || '512x512',
+              type: item.mimeType || 'image/jpeg'
+            }));
+            callback(formatted);
+            return;
+          }
+
+          const imgUrl = artData || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60";
+          const img = new Image();
+          
+          img.onload = function() {
+            const width = img.naturalWidth || 512;
+            const height = img.naturalHeight || 512;
+            const sizeStr = `${width}x${height}`;
+            
+            let mimeType = 'image/jpeg';
+            if (imgUrl.toLowerCase().endsWith('.png')) mimeType = 'image/png';
+            else if (imgUrl.toLowerCase().endsWith('.webp')) mimeType = 'image/webp';
+            else if (imgUrl.toLowerCase().endsWith('.gif')) mimeType = 'image/gif';
+
+            callback([
+              {
+                src: imgUrl,
+                sizes: sizeStr,
+                type: mimeType
+              }
+            ]);
+          };
+
+          img.onerror = function() {
+            callback([
+              {
+                src: imgUrl,
+                sizes: '512x512',
+                type: 'image/jpeg'
+              }
+            ]);
+          };
+
+          img.src = imgUrl;
+        }
+
+        // Hàm giả lập Server Request
+        function simulateServerRequest(action, payload) {
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              if (action === "GET_MUSIC_DATA") {
+                resolve(musicData);
+              } else if (action === "ADD_TO_QUEUE") {
+                resolve({ success: true, message: "Đã thêm vào server queue thành công", track: payload });
+              } else if (action === "UPDATE_DURATION") {
+                resolve({ success: true, message: "Cập nhật duration thành công", data: payload });
+              } else if (action === "CREATE_PLAYLIST") {
+                console.log("Đã gửi dữ liệu tạo playlist mới lên máy chủ:", payload);
+                resolve({ success: true, message: "Tạo playlist mới trên server thành công", playlist: payload });
+              } else {
+                reject(new Error("Hành động không hợp lệ trên server!"));
+              }
+            }, 300);
+          });
+        }
+
+        // ==================== CACHE TEMPLATE VÀ XÓA KHỎI DOM ====================
+        function getAndRemoveTemplate(id) {
+          const el = document.getElementById(id);
+          if (el) {
+            const templateClone = el; 
+            el.remove();
+            return templateClone;
+          }
+          return null;
+        }
+
+        const trackTemplate = getAndRemoveTemplate('track-item-template');
+        const popupCardTemplate = getAndRemoveTemplate('popup-playlist-card-template');
+        const popupSongTemplate = getAndRemoveTemplate('popup-song-template');
+        const queueTemplate = getAndRemoveTemplate('queue-item-template');
+        // =========================================================================
+
+        const playlistsContainer = document.getElementById('playlistsContainer');
+        const popupPlaylistsList = document.getElementById('popupPlaylistsList');
+        const playlistTitleName = document.getElementById('playlist-title-name');
+        const playlistCount = document.getElementById('playlist-count');
+
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const repeatBtn = document.getElementById('repeat-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+
+        function updatePlayPauseIcon(playing) {
+          if (playing) {
+            playPauseBtn.classList.remove('fa-play');
+            playPauseBtn.classList.add('fa-pause');
+          } else {
+            playPauseBtn.classList.remove('fa-pause');
+            playPauseBtn.classList.add('fa-play');
+          }
+        }
+
+        function updateMediaSession(track) {
+          if ('mediaSession' in navigator) {
+            getDynamicArtMetadata(track.art, (artworks) => {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: track.title,
+                artist: track.artist,
+                album: "Trang Nghe Nhạc Đa Playlist",
+                artwork: artworks
+              });
+            });
+          }
+        }
+
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.setActionHandler('play', () => {
+            audioElement.play().then(() => {
+              isPlaying = true;
+              updatePlayPauseIcon(true);
+            }).catch(err => console.log("MediaSession play error:", err));
+          });
+
+          navigator.mediaSession.setActionHandler('pause', () => {
+            audioElement.pause();
+            isPlaying = false;
+            updatePlayPauseIcon(false);
+          });
+
+          navigator.mediaSession.setActionHandler('previoustrack', () => {
+            prevBtn.click();
+          });
+
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            nextBtn.click();
+          });
+
+          navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (details.seekTime && audioElement.duration) {
+              audioElement.currentTime = details.seekTime;
+            }
+          });
+        }
+
+        function updatePlayer(track, playOnLoad = true) {
+          document.getElementById('current-art').src = getTrackArtUrl(track.art);
+          document.getElementById('current-title').textContent = track.title;
+          document.getElementById('current-artist').textContent = track.artist;
+          
+          if (track.duration) {
+            durationEl.textContent = track.duration;
+          } else {
+            durationEl.textContent = "0:00";
+          }
+          
+          audioElement.src = track.url || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+          updateMediaSession(track);
+          
+          if (playOnLoad) {
+            audioElement.play().then(() => {
+              isPlaying = true;
+              updatePlayPauseIcon(true);
+            }).catch(err => console.log("Auto-play blocked:", err));
+          }
+        }
+
+        audioElement.addEventListener('loadedmetadata', () => {
+          const tracks = getActivePlaylistTracks();
+          const currentTrack = tracks[currentTrackIndex];
+          if (currentTrack && (!currentTrack.duration || currentTrack.duration === "")) {
+            const totalSeconds = Math.round(audioElement.duration);
+            const formatted = formatTime(audioElement.duration);
+            
+            currentTrack.duration = formatted; 
+            durationEl.textContent = formatted;
+
+            simulateServerRequest("UPDATE_DURATION", {
+              id: currentTrack.id || "unknown_id",
+              duration: totalSeconds
+            }).catch(err => console.error(err));
+
+            const activeTracksDiv = document.getElementById(currentActivePlaylistId);
+            if (activeTracksDiv) {
+              const item = activeTracksDiv.querySelectorAll('.track-item')[currentTrackIndex];
+              if (item) {
+                item.querySelector('.track-duration').textContent = formatted;
+              }
+            }
+          }
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+          if (isPlaying) {
+            audioElement.pause();
+            isPlaying = false;
+            updatePlayPauseIcon(false);
+          } else {
+            audioElement.play().then(() => {
+              isPlaying = true;
+              updatePlayPauseIcon(true);
+            }).catch(err => console.log("Play error:", err));
+          }
+        });
+
+        audioElement.addEventListener('timeupdate', () => {
+          if (audioElement.duration) {
+            const progressPercent = (audioElement.currentTime / audioElement.duration) * 100;
+            progressBar.value = progressPercent;
+            currentTimeEl.textContent = formatTime(audioElement.currentTime);
+
+            if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+              try {
+                navigator.mediaSession.setPositionState({
+                  duration: audioElement.duration,
+                  playbackRate: audioElement.playbackRate,
+                  position: audioElement.currentTime
+                });
+              } catch (e) {}
+            }
+          }
+        });
+
+        progressBar.addEventListener('input', () => {
+          if (audioElement.duration) {
+            audioElement.currentTime = (progressBar.value / 100) * audioElement.duration;
+          }
+        });
+
+        function formatTime(seconds) {
+          const minutes = Math.floor(seconds / 60);
+          const secs = Math.floor(seconds % 60);
+          return minutes.toString() + ":" + (secs < 10 ? "0" : "") + secs.toString();
+        }
+
+        function getActivePlaylistTracks() {
+          const currentPlaylist = musicData.find(p => p.id === currentActivePlaylistId);
+          return currentPlaylist ? currentPlaylist.tracks : [];
+        }
+
+        nextBtn.addEventListener('click', () => {
+          const tracks = getActivePlaylistTracks();
+          if (tracks.length === 0) return;
+
+          if (isShuffle) {
+            currentTrackIndex = Math.floor(Math.random() * tracks.length);
+          } else {
+            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+          }
+          playTrackByIndex(currentTrackIndex);
+        });
+
+        prevBtn.addEventListener('click', () => {
+          const tracks = getActivePlaylistTracks();
+          if (tracks.length === 0) return;
+
+          currentTrackIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+          playTrackByIndex(currentTrackIndex);
+        });
+
+        function playTrackByIndex(index) {
+          const tracks = getActivePlaylistTracks();
+          if (tracks[index]) {
+            const track = tracks[index];
+            currentTrackIndex = index;
+            updatePlayer(track, true);
+            
+            const activeTracksDiv = document.getElementById(currentActivePlaylistId);
+            if (activeTracksDiv) {
+              const trackItems = activeTracksDiv.querySelectorAll('.track-item');
+              trackItems.forEach((item, idx) => {
+                if (idx === index) item.classList.add('active');
+                else item.classList.remove('active');
+              });
+            }
+          }
+        }
+
+        audioElement.addEventListener('ended', () => {
+          if (isRepeat) {
+            audioElement.currentTime = 0;
+            audioElement.play();
+          } else {
+            nextBtn.click();
+          }
+        });
+
+        shuffleBtn.addEventListener('click', () => {
+          isShuffle = !isShuffle;
+          shuffleBtn.classList.toggle('is-active', isShuffle);
+        });
+
+        repeatBtn.addEventListener('click', () => {
+          isRepeat = !isRepeat;
+          repeatBtn.classList.toggle('is-active', isRepeat);
+        });
+
+        function switchPlaylist(playlistId, playlistName) {
+          currentActivePlaylistId = playlistId;
+          currentTrackIndex = 0;
+          document.querySelectorAll('.playlist-tracks').forEach(el => el.classList.remove('active'));
+          const targetPlaylist = document.getElementById(playlistId);
+          if (targetPlaylist) {
+            targetPlaylist.classList.add('active');
+          }
+          const found = musicData.find(p => p.id === playlistId);
+          if (found) {
+            playlistTitleName.textContent = playlistName;
+            playlistCount.textContent = found.tracks.length + " bài hát";
+          }
+        }
+
+        document.getElementById('playEntirePlaylistBtn').addEventListener('click', () => {
+          const currentPlaylist = musicData.find(p => p.id === currentActivePlaylistId);
+          if (currentPlaylist && currentPlaylist.tracks.length > 0) {
+            playTrackByIndex(0);
+          }
+        });
+
+        // ==================== XỬ LÝ HÀNG ĐỢI (QUEUE) ====================
+        let queueListArray = [];
+        const queuePopup = document.getElementById('queuePopup');
+        const queueListContainer = document.getElementById('queueList');
+        const queueCountText = document.getElementById('queueCountText');
+        const playQueueBtn = document.getElementById('playQueueBtn');
+
+        function addToQueue(track, btnElement) {
+          simulateServerRequest("ADD_TO_QUEUE", track).then(response => {
+            console.log(response.message);
+            queueListArray.push(track);
+            renderQueue();
+            queuePopup.classList.add('show');
+          }).catch(error => console.error(error));
+        }
+
+        function renderQueue() {
+          while (queueListContainer.firstElementChild) {
+            queueListContainer.firstElementChild.remove();
+          }
+
+          queueCountText.textContent = "Đã thêm " + queueListArray.length + " bài hát";
+          queueListArray.forEach((track, index) => {
+            const clone = queueTemplate.content.cloneNode(true);
+            clone.querySelector('.qi-thumb').src = getTrackArtUrl(track.art);
+            clone.querySelector('.qi-title').textContent = track.title;
+            clone.querySelector('.qi-artist').textContent = track.artist;
+            
+            clone.querySelector('.queue-item-remove').addEventListener('click', () => {
+              queueListArray.splice(index, 1);
+              renderQueue();
+              if (queueListArray.length === 0) queuePopup.classList.remove('show');
+            });
+            queueListContainer.appendChild(clone);
+          });
+        }
+
+        playQueueBtn.addEventListener('click', () => {
+          if (queueListArray.length === 0) return;
+
+          const queuePlaylistId = "playlist-queue-temp";
+          let existingQueuePlaylist = musicData.find(p => p.id === queuePlaylistId);
+
+          if (existingQueuePlaylist) {
+            existingQueuePlaylist.tracks = [...queueListArray];
+          } else {
+            musicData.unshift({
+              id: queuePlaylistId,
+              name: "Danh Sách Chờ",
+              tracks: [...queueListArray]
+            });
+          }
+
+          renderAppStructureOnly();
+          switchPlaylist(queuePlaylistId, "Danh Sách Chờ");
+          playTrackByIndex(0);
+          queuePopup.classList.remove('show');
+        });
+
+        // ==================== XỬ LÝ NÚT LƯU THÀNH PLAYLIST ====================
+        const savePlaylistBtn = document.getElementById('savePlaylistBtn');
+        if (savePlaylistBtn) {
+          savePlaylistBtn.addEventListener('click', () => {
+            if (queueListArray.length === 0) {
+              alert("Hàng đợi đang trống, không thể lưu playlist!");
+              return;
+            }
+
+            const playlistNameInput = prompt("Nhập tên cho playlist mới của bạn:", "Playlist Yêu Thích Mới");
+            if (!playlistNameInput || playlistNameInput.trim() === "") {
+              return;
+            }
+
+            const newPlaylistId = "playlist_" + Date.now();
+            const newPlaylistPayload = {
+              id: newPlaylistId,
+              name: playlistNameInput.trim(),
+              tracks: [...queueListArray]
+            };
+
+            simulateServerRequest("CREATE_PLAYLIST", newPlaylistPayload).then(response => {
+              console.log(response.message);
+              musicData.push(newPlaylistPayload);
+              renderAppStructureOnly();
+              switchPlaylist(newPlaylistId, newPlaylistPayload.name);
+              queuePopup.classList.remove('show');
+              alert(`Đã tạo và lưu thành công playlist "${newPlaylistPayload.name}"!`);
+            }).catch(err => {
+              console.error("Lỗi khi tạo playlist lên server:", err);
+            });
+          });
+        }
+        // ===================================================================
+
+        document.getElementById('closeQueueBtn').addEventListener('click', () => {
+          queuePopup.classList.remove('show');
+        });
+
+        function renderAppStructureOnly() {
+          while (playlistsContainer.firstElementChild) {
+            playlistsContainer.firstElementChild.remove();
+          }
+
+          musicData.forEach((playlist) => {
+            const tracksDiv = document.createElement('div');
+            tracksDiv.classList.add('playlist-tracks');
+            tracksDiv.id = playlist.id;
+            if (playlist.id === currentActivePlaylistId) tracksDiv.classList.add('active');
+
+            playlist.tracks.forEach((track, tIndex) => {
+              const clone = trackTemplate.content.cloneNode(true);
+              const item = clone.querySelector('.track-item');
+              
+              if (playlist.id === currentActivePlaylistId && tIndex === currentTrackIndex) {
+                item.classList.add('active');
+              }
+
+              item.querySelector('.track-thumb').src = getTrackArtUrl(track.art);
+              item.querySelector('.track-title').textContent = track.title;
+              item.querySelector('.track-artist').textContent = track.artist;
+              item.querySelector('.track-duration').textContent = track.duration || "--:--";
+
+              item.addEventListener('click', () => {
+                tracksDiv.querySelectorAll('.track-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                currentTrackIndex = tIndex;
+                updatePlayer(track, true);
+              });
+
+              const addBtn = item.querySelector('.add-to-queue-btn');
+              if (addBtn) {
+                addBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  addToQueue(track, addBtn);
+                });
+              }
+              tracksDiv.appendChild(clone);
+            });
+            playlistsContainer.appendChild(tracksDiv);
+          });
+        }
+
+        function renderApp() {
+          simulateServerRequest("GET_MUSIC_DATA").then(data => {
+            musicData = data;
+            renderPlaylistCards(musicData);
+            renderAppStructureOnly();
+
+            if (musicData.length > 0 && musicData[0].tracks.length > 0) {
+              playlistTitleName.textContent = musicData[0].name;
+              playlistCount.textContent = musicData[0].tracks.length + " bài hát";
+              updatePlayer(musicData[0].tracks[0], false);
+            }
+          });
+        }
+
+        function renderPlaylistCards(data) {
+          while (popupPlaylistsList.firstElementChild) {
+            popupPlaylistsList.firstElementChild.remove();
+          }
+
+          document.getElementById('popupMainTitle').textContent = "Danh sách Playlist của bạn";
+          document.getElementById('popupBackBtn').style.display = 'none';
+
+          data.forEach((playlist) => {
+            const cardClone = popupCardTemplate.content.cloneNode(true);
+            const card = cardClone.querySelector('.popup-playlist-card');
+            card.querySelector('.popup-pl-name').textContent = playlist.name;
+            card.querySelector('.popup-pl-count').textContent = playlist.tracks.length + " bài hát";
+            card.querySelector('.popup-play-btn').addEventListener('click', (e) => {
+              e.stopPropagation();
+              switchPlaylist(playlist.id, playlist.name);
+              if (playlist.tracks.length > 0) {
+                playTrackByIndex(0);
+              }
+              document.getElementById('allPlaylistsPopup').classList.remove('show');
+            });
+            card.querySelector('.popup-info-btn').addEventListener('click', (e) => {
+              e.stopPropagation();
+              renderPopupSongs(playlist);
+            });
+            card.addEventListener('click', () => {
+              switchPlaylist(playlist.id, playlist.name);
+              document.getElementById('allPlaylistsPopup').classList.remove('show');
+            });
+            popupPlaylistsList.appendChild(cardClone);
+          });
+        }
+
+        function renderPopupSongs(playlist) {
+          document.getElementById('popupMainTitle').textContent = playlist.name;
+          document.getElementById('popupBackBtn').style.display = 'block';
+          
+          while (popupPlaylistsList.firstElementChild) {
+            popupPlaylistsList.firstElementChild.remove();
+          }
+
+          playlist.tracks.forEach((track, idx) => {
+            const songClone = popupSongTemplate.content.cloneNode(true);
+            songClone.querySelector('.psi-thumb').src = getTrackArtUrl(track.art);
+            songClone.querySelector('.psi-title').textContent = track.title;
+            songClone.querySelector('.psi-artist').textContent = track.artist;
+            songClone.querySelector('.psi-duration').textContent = track.duration || "--:--";
+
+            // Xử lý sự kiện phát bài hát từ popup song
+            songClone.querySelector('.popup-song-play').addEventListener('click', (e) => {
+              e.stopPropagation();
+              switchPlaylist(playlist.id, playlist.name);
+              playTrackByIndex(idx);
+              document.getElementById('allPlaylistsPopup').classList.remove('show');
+            });
+
+            // THÊM MỚI: Xử lý sự kiện nút "Thêm vào danh sách chờ" trong popup-song-template
+            const addQueueBtn = songClone.querySelector('.add-to-queue-btn');
+            if (addQueueBtn) {
+              addQueueBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToQueue(track, addQueueBtn);
+                // Tùy chọn: Đóng popup khi thêm xong hoặc giữ nguyên tùy trải nghiệm của bạn
+                // document.getElementById('allPlaylistsPopup').classList.remove('show');
+              });
+            }
+
+            popupPlaylistsList.appendChild(songClone);
+          });
+        }
+
+        document.getElementById('popupBackBtn').addEventListener('click', () => {
+          renderPlaylistCards(musicData);
+        });
+
+        const allPlaylistsPopup = document.getElementById('allPlaylistsPopup');
+        document.getElementById('openPlaylistPopup').addEventListener('click', () => {
+          renderPlaylistCards(musicData);
+          allPlaylistsPopup.classList.add('show');
+        });
+
+        document.getElementById('closePlaylistPopup').addEventListener('click', () => {
+          allPlaylistsPopup.classList.remove('show');
+        });
+
+        allPlaylistsPopup.addEventListener('click', (e) => {
+          if (e.target === allPlaylistsPopup) {
+            allPlaylistsPopup.classList.remove('show');
+          }
+        });
+        - if is_admin
+          const openAddSongBtn = document.getElementById('openAddSongPopupBtn');
+          const addSongTemplate = document.getElementById('add-song-popup-template');
+
+          openAddSongBtn.addEventListener('click', () => {
+            // Clone nội dung từ template vào DOM
+            const popupNode = addSongTemplate.content.cloneNode(true);
+            document.body.appendChild(popupNode);
+
+            const addSongPopupModal = document.getElementById('addSongPopupModal');
+            const closeAddSongPopup = document.getElementById('closeAddSongPopup');
+            const addSongForm = document.getElementById('addSongForm');
+            const inputSongFile = document.getElementById('inputSongFile');
+            const inputSongTitle = document.getElementById('inputSongTitle');
+            const inputSongArtist = document.getElementById('inputSongArtist');
+
+            // Tự động điền tên bài hát và nghệ sĩ dựa theo tên file nếu người dùng chọn file trước
+            inputSongFile.addEventListener('change', (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                // Lấy tên file làm tên bài hát (bỏ phần mở rộng .mp3, .wav...)
+                const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                if (!inputSongTitle.value) {
+                  inputSongTitle.value = fileNameWithoutExt;
+                }
+                if (!inputSongArtist.value) {
+                  inputSongArtist.value = "Unknown Artist";
+                }
+              }
+            });
+
+            // Hiển thị popup hiệu ứng mờ dần
+            setTimeout(() => {
+              addSongPopupModal.classList.add('show');
+            }, 10);
+
+            const removePopup = () => {
+              addSongPopupModal.classList.remove('show');
+              setTimeout(() => {
+                addSongPopupModal.remove(); // Xóa khỏi DOM sau khi đóng
+              }, 300);
+            };
+
+            closeAddSongPopup.addEventListener('click', removePopup);
+            addSongPopupModal.addEventListener('click', (e) => {
+              if (e.target === addSongPopupModal) {
+                removePopup();
+              }
+            });
+
+            // Xử lý submit thêm bài hát
+            addSongForm.addEventListener('submit', (e) => {
+              e.preventDefault();
+              const title = inputSongTitle.value.trim();
+              const artist = inputSongArtist.value.trim();
+              const art = document.getElementById('inputSongArt').value.trim() || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=96&auto=format&fit=crop&q=60';
+              const fileInput = inputSongFile.files[0];
+              const urlInput = document.getElementById('inputSongUrl').value.trim();
+
+              // Kiểm tra xem người dùng chọn file hay nhập URL
+              let songUrl = "";
+              if (fileInput) {
+                // Tạo local URL từ file máy tính
+                songUrl = URL.createObjectURL(fileInput);
+              } else if (urlInput) {
+                songUrl = urlInput;
+              } else {
+                alert("Vui lòng chọn một tập tin nhạc từ máy hoặc nhập đường dẫn URL!");
+                return;
+              }
+
+              // Xác định playlist mục tiêu
+              let targetPlaylist = null;
+              if (typeof currentPlaylistId !== 'undefined') {
+                targetPlaylist = musicData.find(pl => pl.id === currentPlaylistId);
+              }
+              if (!targetPlaylist && musicData.length > 0) {
+                targetPlaylist = musicData[0];
+              }
+
+              if (targetPlaylist) {
+                const newTrack = {
+                  id: "song_hash_" + Date.now(),
+                  title,
+                  artist,
+                  duration: "3:30",
+                  art,
+                  url: songUrl
+                };
+                targetPlaylist.tracks.push(newTrack);
+                
+                // Render lại giao diện danh sách bài hát nếu đang mở playlist đó
+                if (typeof currentPlaylistId !== 'undefined' && typeof renderPlaylistTracks === 'function') {
+                  renderPlaylistTracks(currentPlaylistId);
+                }
+                
+                alert("Thêm bài hát thành công!");
+                removePopup();
+              } else {
+                alert("Không tìm thấy playlist để thêm bài hát!");
+              }
+            });
+          });
+        // Khởi chạy ứng dụng
+        renderApp();
+      })();

@@ -70,18 +70,6 @@ static int pug_ast_append(struct pug_ast_t *parent, struct pug_ast_t *node) {
   return 0;
 }
 
-static const char* pug_str_memrchr(const char *s, int c, size_t n) {
-  if (n == 0) return NULL;
-  const char *ptr = s + n - 1;
-  while (ptr >= s) {
-    if (*ptr == (char)c) {
-      return ptr;
-    }
-    ptr--;
-  }
-  return NULL;
-}
-
 static struct pug_str_t pug_str_trim(struct pug_str_t s) {
   while (s.len > 0 && isspace((unsigned char)*s.buf)) {
     s.buf++, s.len--;
@@ -362,7 +350,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
           struct pug_str_t remainder = pug_str_n(trimmed.buf + rem_offset, trimmed.len - rem_offset);
           if (remainder.buf[0] == '(') {
             const char *paren_open = remainder.buf + 1;
-            const char *paren_close = pug_str_memrchr(paren_open, ')', remainder.len);
+            const char *paren_close = memchr(paren_open, ')', remainder.len);
             if (paren_close) {
               size_t attr_len = (size_t)(paren_close - paren_open);
               attrs = pug_str_n(paren_open, attr_len);
@@ -378,7 +366,7 @@ static int pug_parse_ast(const char *source, size_t len, struct pug_ast_t **ast)
               selector = pug_str_trim(pug_str_n(remainder.buf, sel_len));
               
               {
-                const char *paren_close = pug_str_memrchr(paren_open, ')', remainder.len - sel_len);
+                const char *paren_close = memchr(paren_open, ')', remainder.len - sel_len);
                 if (paren_close) {
                   attrs = pug_str_n(paren_open, (size_t)(paren_close - paren_open + 1));
                   if ((size_t)(paren_close + 1 - trimmed.buf) < trimmed.len) {
@@ -766,6 +754,33 @@ static int is_inside_pre(struct pug_ast_t *node) {
   }
   return 0;
 }
+static int pug_html_entity_encode(const char *src, size_t len, struct pug_str_t *out) {
+  const char *p = src;
+  const char *end = src + len;
+
+  while (p < end) {
+    char c = *p;
+    if (c == '\\' && *(p + 1) == '"') {
+      p++;
+      continue;
+    }
+    if (c == '&') {
+      if (pug_str_append(out, "&amp;") == -1) return -1;
+    } else if (c == '<') {
+      if (pug_str_append(out, "&lt;") == -1) return -1;
+    } else if (c == '>') {
+      if (pug_str_append(out, "&gt;") == -1) return -1;
+    } else if (c == '"') {
+      if (pug_str_append(out, "&quot;") == -1) return -1;
+    } else if (c == '\'') {
+      if (pug_str_append(out, "&#39;") == -1) return -1;
+    } else {
+      if (pug_str_put(out, c) == -1) return -1;
+    }
+    p++;
+  }
+  return 0;
+}
 
 static int pug_interpolate_variables(
   struct pug_str_t s, struct pug_str_t *ctx_json, struct pug_str_t item,
@@ -784,74 +799,97 @@ static int pug_interpolate_variables(
       }
       
       if (brace < end) {
-        struct pug_str_t var_name = pug_str_n(start, (size_t)(brace - start));
-        struct pug_str_t val = pug_str_n(NULL, 0);
+        struct pug_str_t full_expr = pug_str_n(start, (size_t)(brace - start));
+        struct pug_str_t var_name;
+        int do_encode = 0;
+        const char *pipe = memchr(full_expr.buf, '|', full_expr.len);
         
-        if (item.buf && item.len > 0) {
-          if (loop_var.len > 0 && pug_str_equals(var_name, loop_var)) {
-            val = item;
-          } else {
-            if (loop_var.len > 0 && var_name.len > loop_var.len &&
-                memcmp(var_name.buf, loop_var.buf, loop_var.len) == 0 &&
-                var_name.buf[loop_var.len] == '.') {
-              struct pug_str_t sub_path = pug_str_n(var_name.buf + loop_var.len + 1, var_name.len - loop_var.len - 1);
-              val = pug_json_get_tok(item, sub_path);
+        if (pipe) {
+          struct pug_str_t modifier = pug_str_trim(pug_str_n(pipe + 1, full_expr.len - (size_t)(pipe - full_expr.buf) - 1));
+          var_name = pug_str_trim(pug_str_n(full_expr.buf, (size_t)(pipe - full_expr.buf)));
+          if (pug_str_equals(modifier, pug_str_s("encode"))) {
+            do_encode = 1;
+          }
+        } else {
+          var_name = pug_str_trim(full_expr);
+        }
+
+        {
+          struct pug_str_t val = pug_str_n(NULL, 0);
+          
+          if (item.buf && item.len > 0) {
+            if (loop_var.len > 0 && pug_str_equals(var_name, loop_var)) {
+              val = item;
             } else {
-              val = pug_json_get_tok(item, var_name);
+              if (loop_var.len > 0 && var_name.len > loop_var.len &&
+                  memcmp(var_name.buf, loop_var.buf, loop_var.len) == 0 &&
+                  var_name.buf[loop_var.len] == '.') {
+                struct pug_str_t sub_path = pug_str_n(var_name.buf + loop_var.len + 1, var_name.len - loop_var.len - 1);
+                val = pug_json_get_tok(item, sub_path);
+              } else {
+                val = pug_json_get_tok(item, var_name);
+              }
             }
           }
-        }
-        
-        if (!val.buf || val.len == 0) {
-          val = pug_json_get_tok(*ctx_json, var_name);
-        }
-
-        if (val.buf && val.len > 0) {
-          const char *v_ptr = val.buf;
-          const char *v_end = val.buf + val.len;
-
-          if (val.len >= 2 && *v_ptr == '"' && *(v_end - 1) == '"') {
-            v_ptr++;
-            v_end--;
+          
+          if (!val.buf || val.len == 0) {
+            val = pug_json_get_tok(*ctx_json, var_name);
           }
 
-          while (v_ptr < v_end) {
-            if (*v_ptr == '\\' && v_ptr + 1 < v_end) {
-              v_ptr++;
-              char esc = *v_ptr;
-              if (esc == 'n') {
-                if (pug_str_put(out, '\n') == -1) return -1;
-              } else if (esc == 't') {
-                if (pug_str_put(out, '\t') == -1) return -1;
-              } else if (esc == 'r') {
-                if (pug_str_put(out, '\r') == -1) return -1;
-              } else if (esc == '"' || esc == '\\' || esc == '/') {
-                if (pug_str_put(out, esc) == -1) return -1;
-              } else if (esc == 'u' && v_ptr + 4 < v_end) {
-                char hex[5] = {v_ptr[1], v_ptr[2], v_ptr[3], v_ptr[4], '\0'};
-                unsigned int codepoint = (unsigned int)strtoul(hex, NULL, 16);
-                v_ptr += 4;
+          if (val.buf && val.len > 0) {
+            const char *v_ptr = val.buf;
+            const char *v_end = val.buf + val.len;
 
-                if (codepoint < 0x80) {
-                  if (pug_str_put(out, (char)codepoint) == -1) return -1;
-                } else if (codepoint < 0x800) {
-                  if (pug_str_put(out, (char)(0xC0 | (codepoint >> 6))) == -1) return -1;
-                  if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
-                } else {
-                  if (pug_str_put(out, (char)(0xE0 | (codepoint >> 12))) == -1) return -1;
-                  if (pug_str_put(out, (char)(0x80 | ((codepoint >> 6) & 0x3F))) == -1) return -1;
-                  if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
-                }
-              } else {
-                if (pug_str_put(out, '\\') == -1) return -1;
-                if (pug_str_put(out, esc) == -1) return -1;
-              }
-            } else {
-              if (pug_str_put(out, *v_ptr) == -1) {
+            if (val.len >= 2 && *v_ptr == '"' && *(v_end - 1) == '"') {
+              v_ptr++;
+              v_end--;
+            }
+
+            if (do_encode) {
+              size_t raw_val_len = (size_t)(v_end - v_ptr);
+              if (pug_html_entity_encode(v_ptr, raw_val_len, out) == -1) {
                 return -1;
               }
+            } else {
+              while (v_ptr < v_end) {
+                if (*v_ptr == '\\' && v_ptr + 1 < v_end) {
+                  v_ptr++;
+                  char esc = *v_ptr;
+                  if (esc == 'n') {
+                    if (pug_str_put(out, '\n') == -1) return -1;
+                  } else if (esc == 't') {
+                    if (pug_str_put(out, '\t') == -1) return -1;
+                  } else if (esc == 'r') {
+                    if (pug_str_put(out, '\r') == -1) return -1;
+                  } else if (esc == '"' || esc == '\\' || esc == '/') {
+                    if (pug_str_put(out, esc) == -1) return -1;
+                  } else if (esc == 'u' && v_ptr + 4 < v_end) {
+                    char hex[5] = {v_ptr[1], v_ptr[2], v_ptr[3], v_ptr[4], '\0'};
+                    unsigned int codepoint = (unsigned int)strtoul(hex, NULL, 16);
+                    v_ptr += 4;
+
+                    if (codepoint < 0x80) {
+                      if (pug_str_put(out, (char)codepoint) == -1) return -1;
+                    } else if (codepoint < 0x800) {
+                      if (pug_str_put(out, (char)(0xC0 | (codepoint >> 6))) == -1) return -1;
+                      if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
+                    } else {
+                      if (pug_str_put(out, (char)(0xE0 | (codepoint >> 12))) == -1) return -1;
+                      if (pug_str_put(out, (char)(0x80 | ((codepoint >> 6) & 0x3F))) == -1) return -1;
+                      if (pug_str_put(out, (char)(0x80 | (codepoint & 0x3F))) == -1) return -1;
+                    }
+                  } else {
+                    if (pug_str_put(out, '\\') == -1) return -1;
+                    if (pug_str_put(out, esc) == -1) return -1;
+                  }
+                } else {
+                  if (pug_str_put(out, *v_ptr) == -1) {
+                    return -1;
+                  }
+                }
+                v_ptr++;
+              }
             }
-            v_ptr++;
           }
         }
         
@@ -1544,7 +1582,7 @@ int main(int argc, char **argv) {
       }
       #endif
     }
-    if (lte_pug_file_render(argv[1], &ctx, &out, 1)) {
+    if (lte_pug_file_render(argv[1], &ctx, &out, 0)) {
       return -1;
     }
     pug_str_free(&ctx);
